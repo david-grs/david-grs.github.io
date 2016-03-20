@@ -4,11 +4,10 @@ gems:
   - jekyll-paginate
 
 # Site settings
-title: "Thoughts from a C++ Wall Street developer"
+title: "Thoughts from a Wall Street developer"
 description: > # this means to ignore newlines until "email:"
-        A blog about C++, with an accent on low-latency and system programming.
+        A blog about C++, with an emphasis on low-latency, performance measurements and system programming.
 
-email: gdavid.devel@gmail.com
 #blog logo
 #logo: "/assets/images/df_logo.jpg"
 # blog cover
@@ -16,7 +15,7 @@ cover: "/assets/images/cover.jpg"
 
 name: 'David Gross'
 author: 'David Gross'
-#author_image: "/assets/images/author.jpg"
+author_image: "/assets/images/author.jpg"
 
 paginate:	5
 
