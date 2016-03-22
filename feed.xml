@@ -6,8 +6,8 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Wed, 23 Mar 2016 00:14:02 +0100</pubDate>
-    <lastBuildDate>Wed, 23 Mar 2016 00:14:02 +0100</lastBuildDate>
+    <pubDate>Wed, 23 Mar 2016 00:17:18 +0100</pubDate>
+    <lastBuildDate>Wed, 23 Mar 2016 00:17:18 +0100</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
     
       <item>
@@ -267,12 +267,13 @@ The ABI specific parts are implemented in sysdeps ; as for x86_64, we access the
 &lt;h1 id=&quot;so-what&quot;&gt;So what?&lt;/h1&gt;
 &lt;hr /&gt;
 &lt;p&gt;Accessing thread local variables is cheap in both cases ; the lookup done by the glibc is very fast (and takes a constant time). 
-But if your code is — or could be — loaded as a dynamic module and is very speed critical, then it can be worth spending
-some time to avoid this lookup.&lt;/p&gt;
+But if your code is — or could be — loaded as a dynamic module and is speed critical, then it can be worth spending
+some time to &lt;strong&gt;avoid this lookup&lt;/strong&gt;.&lt;/p&gt;
 
-&lt;p&gt;One easy win could be to access the thread local data from the same block of code. This could be done by a small refactoring, or simply
-by inlining a function if you are calling it multiple times. One could think about keeping the reference of the thread local variable, 
-but I found this solution very dodgy. You will have to prepare your arguments to pass the code review…&lt;/p&gt;
+&lt;p&gt;One easy win could be to access the thread local data from the same block of code. The compiler will be smart enough to call only
+once &lt;em&gt;__tls_get_addr&lt;/em&gt;. This could be done by, for example, &lt;strong&gt;inlining&lt;/strong&gt; the function that access the TLS. &lt;/p&gt;
+
+&lt;p&gt;One could think about &lt;em&gt;keeping the reference&lt;/em&gt; of the thread local variable, but I found this solution very dodgy. You might have to prepare your arguments to pass the code review :) …&lt;/p&gt;
 
 &lt;p&gt;More information about the TLS and its implementation on GNU/Linux in &lt;a href=&quot;&amp;quot;https://www.akkadia.org/drepper/tls.pdf&amp;quot;&quot;&gt;ELF Handling for TLS&lt;/a&gt; from Ulrich Drepper.&lt;/p&gt;
 

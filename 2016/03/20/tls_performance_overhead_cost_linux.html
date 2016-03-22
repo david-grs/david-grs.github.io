@@ -321,12 +321,13 @@ The ABI specific parts are implemented in sysdeps ; as for x86_64, we access the
 <h1 id="so-what">So what?</h1>
 <hr />
 <p>Accessing thread local variables is cheap in both cases ; the lookup done by the glibc is very fast (and takes a constant time). 
-But if your code is — or could be — loaded as a dynamic module and is very speed critical, then it can be worth spending
-some time to avoid this lookup.</p>
+But if your code is — or could be — loaded as a dynamic module and is speed critical, then it can be worth spending
+some time to <strong>avoid this lookup</strong>.</p>
 
-<p>One easy win could be to access the thread local data from the same block of code. This could be done by a small refactoring, or simply
-by inlining a function if you are calling it multiple times. One could think about keeping the reference of the thread local variable, 
-but I found this solution very dodgy. You will have to prepare your arguments to pass the code review…</p>
+<p>One easy win could be to access the thread local data from the same block of code. The compiler will be smart enough to call only
+once <em>__tls_get_addr</em>. This could be done by, for example, <strong>inlining</strong> the function that access the TLS. </p>
+
+<p>One could think about <em>keeping the reference</em> of the thread local variable, but I found this solution very dodgy. You might have to prepare your arguments to pass the code review :) …</p>
 
 <p>More information about the TLS and its implementation on GNU/Linux in <a href="&quot;https://www.akkadia.org/drepper/tls.pdf&quot;">ELF Handling for TLS</a> from Ulrich Drepper.</p>
 
