@@ -26,8 +26,8 @@ So I did what I prefer: I profiled it.
 > If you have **statically linked** code, you can use a thread local variable like another one: there is only one TLS block and its
 > entire data is known at link-time, which allows the pre-calculation of all offsets.
 > <p>&nbsp;</p>
-> If you are using **dynamic modules**, there will be a lookup each time you access the thread local variable, better keep a reference
-> to it if you want to access it a lot.
+> If you are using **dynamic modules**, there will be a lookup each time you access the thread local variable, but
+> you have some options in order to avoid it in speed critical code.
 
 
 #&micro;-benchmarking the access of TLS data
@@ -105,7 +105,7 @@ of _\_\_tls\_get\_addr_. _offset_ is known at build time, then _module\_id_ is t
 linking.
 {% gist david-grs/8f8f38b6b63216a97c5c tls_get_offset.c %}
 <br />
-This is the actual implementation from the GLibc 2.20:
+This is the actual implementation from the glibc 2.20:
 {% gist david-grs/8f8f38b6b63216a97c5c dl-tls.c %}
 <br />
 The ABI specific parts are implemented in sysdeps ; as for x86_64, we access the TCB from the segment register FS:
@@ -113,9 +113,14 @@ The ABI specific parts are implemented in sysdeps ; as for x86_64, we access the
 
 #So what?
 ---------
-Accessing thread local variables is cheap in all cases ; the lookup done by the glibc is very fast (and always takes a constant time). 
-But if your code is &mdash; or could be &mdash; loaded as a dynamic module and is very speed critical, then it can be useful to simply
-store the reference to some thread local variables.
+Accessing thread local variables is cheap in both cases ; the lookup done by the glibc is very fast (and takes a constant time). 
+But if your code is &mdash; or could be &mdash; loaded as a dynamic module and is speed critical, then it can be worth spending
+some time to __avoid this lookup__.
+
+One easy win could be to access the thread local data from the same block of code. The compiler will be smart enough to call only
+once _\_\_tls\_get\_addr_. This could be done by, for example, __inlining__ the function that access the TLS. 
+
+One could think about _keeping the reference_ of the thread local variable, but I found this solution very dodgy. You might have to prepare your arguments to pass the code review :) ...
 
 More information about the TLS and its implementation on GNU/Linux in [ELF Handling for TLS]("https://www.akkadia.org/drepper/tls.pdf") from Ulrich Drepper.
 
