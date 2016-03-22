@@ -6,8 +6,8 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Wed, 23 Mar 2016 00:07:24 +0100</pubDate>
-    <lastBuildDate>Wed, 23 Mar 2016 00:07:24 +0100</lastBuildDate>
+    <pubDate>Wed, 23 Mar 2016 00:14:02 +0100</pubDate>
+    <lastBuildDate>Wed, 23 Mar 2016 00:14:02 +0100</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
     
       <item>
@@ -33,8 +33,8 @@ implementation of Windows while another one points out the code was running unde
   &lt;p&gt;If you have &lt;strong&gt;statically linked&lt;/strong&gt; code, you can use a thread local variable like another one: there is only one TLS block and its
 entire data is known at link-time, which allows the pre-calculation of all offsets.&lt;/p&gt;
   &lt;p&gt;&amp;nbsp;&lt;/p&gt;
-  &lt;p&gt;If you are using &lt;strong&gt;dynamic modules&lt;/strong&gt;, there will be a lookup each time you access the thread local variable, better keep a reference
-to it if you want to access it a lot.&lt;/p&gt;
+  &lt;p&gt;If you are using &lt;strong&gt;dynamic modules&lt;/strong&gt;, there will be a lookup each time you access the thread local variable, but
+you have some options in order to avoid it in speed critical code.&lt;/p&gt;
 &lt;/blockquote&gt;
 
 &lt;h1 id=&quot;micro-benchmarking-the-access-of-tls-data&quot;&gt;µ-benchmarking the access of TLS data&lt;/h1&gt;
@@ -267,8 +267,12 @@ The ABI specific parts are implemented in sysdeps ; as for x86_64, we access the
 &lt;h1 id=&quot;so-what&quot;&gt;So what?&lt;/h1&gt;
 &lt;hr /&gt;
 &lt;p&gt;Accessing thread local variables is cheap in both cases ; the lookup done by the glibc is very fast (and takes a constant time). 
-But if your code is — or could be — loaded as a dynamic module and is very speed critical, then it can be useful to simply
-store the reference to some thread local variables.&lt;/p&gt;
+But if your code is — or could be — loaded as a dynamic module and is very speed critical, then it can be worth spending
+some time to avoid this lookup.&lt;/p&gt;
+
+&lt;p&gt;One easy win could be to access the thread local data from the same block of code. This could be done by a small refactoring, or simply
+by inlining a function if you are calling it multiple times. One could think about keeping the reference of the thread local variable, 
+but I found this solution very dodgy. You will have to prepare your arguments to pass the code review…&lt;/p&gt;
 
 &lt;p&gt;More information about the TLS and its implementation on GNU/Linux in &lt;a href=&quot;&amp;quot;https://www.akkadia.org/drepper/tls.pdf&amp;quot;&quot;&gt;ELF Handling for TLS&lt;/a&gt; from Ulrich Drepper.&lt;/p&gt;
 
