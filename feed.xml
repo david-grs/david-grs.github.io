@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Thoughts from a Wall Street developer</title>
+    <description>A blog about C++, with an emphasis on low-latency, performance measurements and system programming.
+</description>
+    <link>http://david-grs.github.io/</link>
+    <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
+    <pubDate>Tue, 22 Mar 2016 23:55:58 +0100</pubDate>
+    <lastBuildDate>Tue, 22 Mar 2016 23:55:58 +0100</lastBuildDate>
+    <generator>Jekyll v2.4.0</generator>
+    
+      <item>
+        <title>TLS performance overhead and cost on GNU/Linux</title>
+        <description>&lt;p&gt;When changing the implementation of a time clock, I had to switch from a static method — think about a classic
+call to &lt;em&gt;clock_gettime()&lt;/em&gt; for example — to a per-thread model. Long story short, it was about a constant TSC that
+was not so constant across different sockets. &lt;/p&gt;
+
+&lt;p&gt;Per-thread and static variables: that sounds like a perfect case for Thread-Local Storage (TLS). However this time clock
+was widely used in my project and was taking so far a couple of CPU cycles, and I wanted to be sure that the TLS would not add
+a consequent overhead.&lt;/p&gt;
+
+&lt;p&gt;A quick look on Google only revealed an article from the Intel Developer Zone: &lt;a href=&quot;&amp;quot;https://software.intel.com/en-us/blogs/2011/05/02/the-hidden-performance-cost-of-accessing-thread-local-variables&amp;quot;&quot;&gt;the hidden performance cost of accessing 
+thread-local variables&lt;/a&gt;.
+Among pro-tips like “you simply have to buy a Intel©® VTune™ licence and don’t forget the Parallel Studio XE©®™ it
+only costs 2k$”, the awesome screenshots or the comment section where someone says that the code is slow due to the TLS 
+implementation of Windows while another one points out the code was running under Linux, I simply decided to &lt;em&gt;_figure out myself&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;So I did what I prefer: I profiled it.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;h1 id=&quot;tldr&quot;&gt;TL;DR&lt;/h1&gt;
+  &lt;p&gt;If you have &lt;strong&gt;statically linked&lt;/strong&gt; code, you can use a thread local variable like another one: there is only one TLS block and its
+entire data is known at link-time, which allows the pre-calculation of all offsets.&lt;/p&gt;
+  &lt;p&gt;&amp;nbsp;&lt;/p&gt;
+  &lt;p&gt;If you are using &lt;strong&gt;dynamic modules&lt;/strong&gt;, there will be a lookup each time you access the thread local variable, better keep a reference
+to it if you want to access it a lot.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h1 id=&quot;micro-benchmarking-the-access-of-tls-data&quot;&gt;µ-benchmarking the access of TLS data&lt;/h1&gt;
+&lt;hr /&gt;
+&lt;p&gt;I wrote a snippet that mimics the code I had in production: one was accessing a static variable, the other one a thread
+local variable, through a static method of the class. &lt;/p&gt;
+
+&lt;noscript&gt;&lt;pre&gt;#pragma once
+
+struct Inc
+{
+    void operator()();
+    static int m_counter;
+};
+
+struct IncTLS
+{
+    void operator()();
+    static thread_local int m_counter;
+};&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=inc.hpp&quot;&gt; &lt;/script&gt;
+
+&lt;noscript&gt;&lt;pre&gt;#include &amp;quot;inc.hpp&amp;quot;
+
+int Inc::m_counter = 0;
+thread_local int IncTLS::m_counter = 0;
+
+void Inc::operator()()    { ++m_counter; }
+void IncTLS::operator()() { ++m_counter; }&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=inc.cpp&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+Note that the &lt;em&gt;thread_local&lt;/em&gt; keyword has been introduced in C++11, but is only accessible from GCC 4.8. Earlier, you still
+have to use &lt;em&gt;__thread&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;To benchmark the code, I am using &lt;a href=&quot;https://github.com/david-grs/geiger&quot; title=&quot;Geiger, a micro benchmark library in C++&quot;&gt;geiger&lt;/a&gt;, a micro
+benchmark library in C++ I developed. The main advantage of geiger is to read &lt;a href=&quot;https://perf.wiki.kernel.org/index.php/Main_Page&quot; title=&quot;Profiling hardware counters&quot;&gt;hardware performance counters&lt;/a&gt;.
+I might write a post about it later. &lt;/p&gt;
+
+&lt;p&gt;Here, I simply declare a suite of benchmark and add two tests, one that accesses the static data and the second one the thread local variable. I run twice the suite, the first time I only
+do one iteration, and 100 iterations the second run ; I will come back to that later.&lt;/p&gt;
+
+&lt;noscript&gt;&lt;pre&gt;#include &amp;quot;inc.hpp&amp;quot;
+
+#include &amp;lt;geiger/benchmark.h&amp;gt;
+#include &amp;lt;vector&amp;gt;
+
+int main(int argc, char **argv)
+{
+    geiger::init();
+    geiger::suite&amp;lt;geiger::instr_profiler&amp;gt; s;
+
+    Inc inc;
+    IncTLS inc_tls;
+
+    s.add(&amp;quot;static&amp;quot;, [&amp;amp;]()
+          {
+              inc();
+          });
+
+    s.add(&amp;quot;tls&amp;quot;, [&amp;amp;]()
+          {
+              inc_tls();
+          });
+
+    s.set_printer&amp;lt;geiger::printers::console&amp;gt;();
+    s.run(1);
+    s.run(100);
+
+    return 0;
+}&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=tls.cpp&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+Let’s build it with our favorite flags:&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;cmake_minimum_required(VERSION 2.8)
+
+set(CMAKE_CXX_FLAGS &amp;quot;${CMAKE_CXX_FLAGS} -Wall -g -O3 std=c++14&amp;quot;)
+
+add_executable(tls tls.cpp inc.cpp)
+target_link_libraries(tls geiger)&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=CMakelists.txt&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+The results are quite straightforward: no overhead at all. There is always a bit of jitter with hardware counters, so do not 
+guess we have more cycles with the TLS test, there is quite some variance here between several runs.&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;Test      Time (ns) PAPI_TOT_INS PAPI_TOT_CYC  PAPI_BR_MSP
+----------------------------------------------------------
+static            4          994         1699           12
+tls               4          994         1812           10&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=Output.txt&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+The assembly code also confirms it. I build with CLang 3.6 but I got the same with GCC 4.7:&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;$ disass ./tls &amp;quot;Inc::operator()()&amp;quot;
+Dump of assembler code for function Inc::operator()():
+   0x0000000000404f40 &amp;lt;+0&amp;gt;:     inc    DWORD PTR [rip+0x202382]
+   0x0000000000404f46 &amp;lt;+6&amp;gt;:     ret    
+End of assembler dump.
+
+$ disass ./tls &amp;quot;IncTLS::operator()()&amp;quot;
+Dump of assembler code for function IncTLS::operator()():
+   0x0000000000404f50 &amp;lt;+0&amp;gt;:     inc    DWORD PTR fs:0xfffffffffffffffc
+   0x0000000000404f58 &amp;lt;+8&amp;gt;:     ret    
+End of assembler dump.&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=Assembly.txt&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+&lt;strong&gt;NB&lt;/strong&gt;: the glibc is using the segment register FS for accessing the TLS&lt;/p&gt;
+
+&lt;h1 id=&quot;how-about-tlsgetaddr-&quot;&gt;How about __tls_get_addr ?&lt;/h1&gt;
+&lt;hr /&gt;
+&lt;p&gt;Apparently, all is good, I can use TLS as I want. But hang on… how about this function that was in the callstack on the 
+Intel blog, &lt;em&gt;__tls_get_addr&lt;/em&gt; ?&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;One thing that always scares me the most when I do micro benchmarks is about the reliability of their results. Indeed, it 
+is very easy to screw up. You have to generate some &lt;em&gt;realistic&lt;/em&gt; inputs that will trigger the same behavior that you got
+in production, without too many side effects. And from the D-cache to the BTB, everything is hot…&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Here, we have a sneaky case: the compilation is part of the environment of our benchmark. If the thread variable is in a dynamic
+module, the linker cannot compute a direct reference to it and we get the much vaunted lookup!&lt;/p&gt;
+
+&lt;p&gt;Let’s build it again, as a shared library this time:&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;cmake_minimum_required(VERSION 2.8)
+
+set(CMAKE_CXX_FLAGS &amp;quot;${CMAKE_CXX_FLAGS} -Wall -g -O3 std=c++14&amp;quot;)
+
+add_library(inc SHARED inc.cpp)
+add_executable(tls tls.cpp)
+target_link_libraries(tls inc geiger)&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=CMakelists_shared.txt&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+There is in this case a difference ; the method that accesses the thread local variable takes twice more time. Please not that 
+this overhead is still very small, as in this case we compare it to an extremely cheap operation…&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;Test      Time (ns) PAPI_TOT_INS PAPI_TOT_CYC  PAPI_BR_MSP
+----------------------------------------------------------
+static            6         1194         2990           20
+tls              12         2694         3568           15&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=Output2.txt&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+The assembly code shows the same difference:&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;$ disass ./libinc.so &amp;quot;Inc::operator()()&amp;quot;
+Dump of assembler code for function Inc::operator()():
+   0x0000000000000870 &amp;lt;+0&amp;gt;:     mov    rax,QWORD PTR [rip+0x200781]
+   0x0000000000000877 &amp;lt;+7&amp;gt;:     inc    DWORD PTR [rax]
+   0x0000000000000879 &amp;lt;+9&amp;gt;:     ret    
+End of assembler dump.
+
+$ disass ./libinc.so &amp;quot;IncTLS::operator()()&amp;quot;
+Dump of assembler code for function IncTLS::operator()():
+   0x0000000000000880 &amp;lt;+0&amp;gt;:     push   rax
+   0x0000000000000881 &amp;lt;+1&amp;gt;:     data32 lea rdi,[rip+0x20074f]
+   0x0000000000000889 &amp;lt;+9&amp;gt;:     data32 data32 call 0x770 &amp;lt;__tls_get_addr@plt&amp;gt;
+   0x0000000000000891 &amp;lt;+17&amp;gt;:    inc    DWORD PTR [rax]
+   0x0000000000000893 &amp;lt;+19&amp;gt;:    pop    rax
+   0x0000000000000894 &amp;lt;+20&amp;gt;:    ret    
+End of assembler dump.&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=Assembly2.txt&quot;&gt; &lt;/script&gt;
+
+&lt;h1 id=&quot;the-tls-implementation-in-elf&quot;&gt;The TLS implementation in ELF&lt;/h1&gt;
+&lt;hr /&gt;
+&lt;p&gt;As global and static variables are stored in &lt;em&gt;.data&lt;/em&gt; and &lt;em&gt;.bss&lt;/em&gt; sections, thread local variables get stored in equivalent 
+&lt;em&gt;.tdata&lt;/em&gt; and &lt;em&gt;.tbss&lt;/em&gt; sections.&lt;/p&gt;
+
+&lt;p&gt;Each thread has its on TCB — &lt;em&gt;Thread Control Block&lt;/em&gt; — that contains some metadata about the thread itself. One
+metadata is the address of the DTV — Dynamic Thread Vector — which is a vector that contains pointers to 
+thread local variables and other TLS blocks.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/tls_implementation.jpg&quot; alt=&quot;TLS implementation&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When using statically linked code, everything is simpler as there is &lt;strong&gt;only one TLS block&lt;/strong&gt;. As the offsets to the thread local
+variables are known at link-time, the compiler is able to generate a direct access to the thread local variable. &lt;/p&gt;
+
+&lt;p&gt;But when you have dynamic modules, several TLS blocks are present. It is easier to see with the following simplified version 
+of &lt;em&gt;__tls_get_addr&lt;/em&gt;. &lt;em&gt;offset&lt;/em&gt; is known at build time, then &lt;em&gt;module_id&lt;/em&gt; is the only variable, which is zero when using static
+linking.&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;void* __tls_get_offset(size_t module_id, size_t offset)
+{
+    char* tls_block = dtv[thread_id][module_id];
+    
+    if (tls_block == UNALLOCATED_TLS_BLOCK)
+        tls_block = dtv[thread_id][module_id] = allocate_tls(module_id);
+    
+    return tls_block + offset;
+}&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=tls_get_offset.c&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+This is the actual implementation from the GLibc 2.20:&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;void *
+__tls_get_addr (GET_ADDR_ARGS)
+{
+  dtv_t *dtv = THREAD_DTV (); 
+
+  if (__glibc_unlikely (dtv[0].counter != GL(dl_tls_generation)))
+    return update_get_addr (GET_ADDR_PARAM);
+
+  void *p = dtv[GET_ADDR_MODULE].pointer.val;
+
+  if (__glibc_unlikely (p == TLS_DTV_UNALLOCATED))
+    return tls_get_addr_tail (GET_ADDR_PARAM, dtv, NULL);
+
+  return (char *) p + GET_ADDR_OFFSET;
+}&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=dl-tls.c&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+The ABI specific parts are implemented in sysdeps ; as for x86_64, we access the TCB from the segment register FS:&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;/* Return the address of the dtv for the current thread.  */
+# define THREAD_DTV() \
+  ({ struct pthread *__pd;                                                    \
+     THREAD_GETMEM (__pd, header.dtv); })
+
+
+/* Read member of the thread descriptor directly.  */
+# define THREAD_GETMEM(descr, member) \
+  ({ __typeof (descr-&amp;gt;member) __value;                                        \
+     if (sizeof (__value) == 1)                                               \
+       asm volatile (&amp;quot;movb %%fs:%P2,%b0&amp;quot;                                      \
+                     : &amp;quot;=q&amp;quot; (__value)                                         \
+                     : &amp;quot;0&amp;quot; (0), &amp;quot;i&amp;quot; (offsetof (struct pthread, member)));     \
+      ....
+&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=x86_64_tls.h&quot;&gt; &lt;/script&gt;
+
+&lt;h1 id=&quot;so-what&quot;&gt;So what?&lt;/h1&gt;
+&lt;hr /&gt;
+&lt;p&gt;Accessing thread local variables is cheap in all cases ; the lookup done by the glibc is very fast (and always takes a constant time). 
+But if your code is — or could be — loaded as a dynamic module and is very speed critical, then it can be useful to simply
+store the reference to some thread local variables.&lt;/p&gt;
+
+&lt;p&gt;More information about the TLS and its implementation on GNU/Linux in &lt;a href=&quot;&amp;quot;https://www.akkadia.org/drepper/tls.pdf&amp;quot;&quot;&gt;ELF Handling for TLS&lt;/a&gt; from Ulrich Drepper.&lt;/p&gt;
+
+</description>
+        <pubDate>Sun, 20 Mar 2016 19:03:20 +0100</pubDate>
+        <link>http://david-grs.github.io/2016/03/20/tls_performance_overhead_cost_linux.html</link>
+        <guid isPermaLink="true">http://david-grs.github.io/2016/03/20/tls_performance_overhead_cost_linux.html</guid>
+        
+        
+      </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta charset="utf-8">
+  <!-- (1) Optimize for mobile versions: http://goo.gl/EOpFl -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- (1) force latest IE rendering engine: bit.ly/1c8EiC9 -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+  <title>TLS performance overhead and cost on GNU/Linux</title>
+  <meta name="description" content="When changing the implementation of a time clock, I had to switch from a static method — think about a classiccall to clock_gettime() for example — to a per-thread model. Long story short, it was a..." />
+
+  <meta name="HandheldFriendly" content="True" />
+  <meta name="MobileOptimized" content="320" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  
+  <meta property="og:site_name" content="Thoughts from a Wall Street developer" />
+  <meta property="og:title" content="TLS performance overhead and cost on GNU/Linux"/>
+  
+  <meta property="og:description" content="When changing the implementation of a time clock, I had to switch from a static method — think about a classiccall to clock_gettime() for example — to a per-thread model. Long story short, it was a..." />
+  
+  <meta property="og:image" content="http://david-grs.github.io" />
+  <meta property="og:url" content="http://david-grs.github.io/2016/03/20/tls_performance_overhead_cost_linux.html" >
+  <meta property="og:type" content="blog" />
+  <meta property="article:published_time" content="2016-03-20T19:03:20+01:00">
+
+  <link rel="canonical" href="http://david-grs.github.io/2016/03/20/tls_performance_overhead_cost_linux.html"/>
+  <link rel="shortcut icon" href="/assets/images/favicon.png" type="image/png"/>
+  <link rel="stylesheet" href="//brick.a.ssl.fastly.net/Linux+Libertine:400,400i,700,700i/Open+Sans:400,400i,700,700i">
+  <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+
+  <link rel="stylesheet" type="text/css" media="screen" href="/css/main.css" />
+  <link rel="stylesheet" type="text/css" media="print" href="/css/print.css" />
+</head>
+
+  <body itemscope itemtype="http://schema.org/Article">
+    <!-- header start -->
+
+<a href="http://david-grs.github.io" class="logo-readium"><span class="logo" style="background-image: url()"></span></a>
+
+<!-- header end -->
+
+    <main class="content" role="main">
+      <article class="post">
+        
+        <div class="noarticleimage">
+          <div class="post-meta">
+            <h1 class="post-title">TLS performance overhead and cost on GNU/Linux</h1>
+            <div class="cf post-meta-text">
+              <div class="author-image" style="background-image: url(/assets/images/author.jpg)">Blog Logo</div>
+              <h4 class="author-name" itemprop="author" itemscope itemtype="http://schema.org/Person">David Gross</h4>
+              on
+              <time datetime="2016-03-20T19:03:20+01:00">20 Mar 2016</time>
+              <!-- , tagged on <span class="post-tag-">, <a href="/tag/"></a></span> -->
+            </div>
+          </div>
+        </div>
+        <br>
+        <br>
+        <br>
+        
+        <section class="post-content">
+          <div class="post-reading">
+            <span class="post-reading-time"></span> read
+          </div>
+          <a name="topofpage"></a>
+          <p>When changing the implementation of a time clock, I had to switch from a static method — think about a classic
+call to <em>clock_gettime()</em> for example — to a per-thread model. Long story short, it was about a constant TSC that
+was not so constant across different sockets. </p>
+
+<p>Per-thread and static variables: that sounds like a perfect case for Thread-Local Storage (TLS). However this time clock
+was widely used in my project and was taking so far a couple of CPU cycles, and I wanted to be sure that the TLS would not add
+a consequent overhead.</p>
+
+<p>A quick look on Google only revealed an article from the Intel Developer Zone: <a href="&quot;https://software.intel.com/en-us/blogs/2011/05/02/the-hidden-performance-cost-of-accessing-thread-local-variables&quot;">the hidden performance cost of accessing 
+thread-local variables</a>.
+Among pro-tips like “you simply have to buy a Intel©® VTune™ licence and don’t forget the Parallel Studio XE©®™ it
+only costs 2k$”, the awesome screenshots or the comment section where someone says that the code is slow due to the TLS 
+implementation of Windows while another one points out the code was running under Linux, I simply decided to <em>_figure out myself</em>.</p>
+
+<p>So I did what I prefer: I profiled it.</p>
+
+<blockquote>
+  <h1 id="tldr">TL;DR</h1>
+  <p>If you have <strong>statically linked</strong> code, you can use a thread local variable like another one: there is only one TLS block and its
+entire data is known at link-time, which allows the pre-calculation of all offsets.</p>
+  <p>&nbsp;</p>
+  <p>If you are using <strong>dynamic modules</strong>, there will be a lookup each time you access the thread local variable, better keep a reference
+to it if you want to access it a lot.</p>
+</blockquote>
+
+<h1 id="micro-benchmarking-the-access-of-tls-data">µ-benchmarking the access of TLS data</h1>
+<hr />
+<p>I wrote a snippet that mimics the code I had in production: one was accessing a static variable, the other one a thread
+local variable, through a static method of the class. </p>
+
+<noscript><pre>#pragma once
+
+struct Inc
+{
+    void operator()();
+    static int m_counter;
+};
+
+struct IncTLS
+{
+    void operator()();
+    static thread_local int m_counter;
+};</pre></noscript>
+<script src="https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=inc.hpp"> </script>
+
+<noscript><pre>#include &quot;inc.hpp&quot;
+
+int Inc::m_counter = 0;
+thread_local int IncTLS::m_counter = 0;
+
+void Inc::operator()()    { ++m_counter; }
+void IncTLS::operator()() { ++m_counter; }</pre></noscript>
+<script src="https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=inc.cpp"> </script>
+
+<p><br />
+Note that the <em>thread_local</em> keyword has been introduced in C++11, but is only accessible from GCC 4.8. Earlier, you still
+have to use <em>__thread</em>.</p>
+
+<p>To benchmark the code, I am using <a href="https://github.com/david-grs/geiger" title="Geiger, a micro benchmark library in C++">geiger</a>, a micro
+benchmark library in C++ I developed. The main advantage of geiger is to read <a href="https://perf.wiki.kernel.org/index.php/Main_Page" title="Profiling hardware counters">hardware performance counters</a>.
+I might write a post about it later. </p>
+
+<p>Here, I simply declare a suite of benchmark and add two tests, one that accesses the static data and the second one the thread local variable. I run twice the suite, the first time I only
+do one iteration, and 100 iterations the second run ; I will come back to that later.</p>
+
+<noscript><pre>#include &quot;inc.hpp&quot;
+
+#include &lt;geiger/benchmark.h&gt;
+#include &lt;vector&gt;
+
+int main(int argc, char **argv)
+{
+    geiger::init();
+    geiger::suite&lt;geiger::instr_profiler&gt; s;
+
+    Inc inc;
+    IncTLS inc_tls;
+
+    s.add(&quot;static&quot;, [&amp;]()
+          {
+              inc();
+          });
+
+    s.add(&quot;tls&quot;, [&amp;]()
+          {
+              inc_tls();
+          });
+
+    s.set_printer&lt;geiger::printers::console&gt;();
+    s.run(1);
+    s.run(100);
+
+    return 0;
+}</pre></noscript>
+<script src="https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=tls.cpp"> </script>
+
+<p><br />
+Let’s build it with our favorite flags:</p>
+<noscript><pre>cmake_minimum_required(VERSION 2.8)
+
+set(CMAKE_CXX_FLAGS &quot;${CMAKE_CXX_FLAGS} -Wall -g -O3 std=c++14&quot;)
+
+add_executable(tls tls.cpp inc.cpp)
+target_link_libraries(tls geiger)</pre></noscript>
+<script src="https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=CMakelists.txt"> </script>
+
+<p><br />
+The results are quite straightforward: no overhead at all. There is always a bit of jitter with hardware counters, so do not 
+guess we have more cycles with the TLS test, there is quite some variance here between several runs.</p>
+<noscript><pre>Test      Time (ns) PAPI_TOT_INS PAPI_TOT_CYC  PAPI_BR_MSP
+----------------------------------------------------------
+static            4          994         1699           12
+tls               4          994         1812           10</pre></noscript>
+<script src="https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=Output.txt"> </script>
+
+<p><br />
+The assembly code also confirms it. I build with CLang 3.6 but I got the same with GCC 4.7:</p>
+<noscript><pre>$ disass ./tls &quot;Inc::operator()()&quot;
+Dump of assembler code for function Inc::operator()():
+   0x0000000000404f40 &lt;+0&gt;:     inc    DWORD PTR [rip+0x202382]
+   0x0000000000404f46 &lt;+6&gt;:     ret    
+End of assembler dump.
+
+$ disass ./tls &quot;IncTLS::operator()()&quot;
+Dump of assembler code for function IncTLS::operator()():
+   0x0000000000404f50 &lt;+0&gt;:     inc    DWORD PTR fs:0xfffffffffffffffc
+   0x0000000000404f58 &lt;+8&gt;:     ret    
+End of assembler dump.</pre></noscript>
+<script src="https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=Assembly.txt"> </script>
+
+<p><br />
+<strong>NB</strong>: the glibc is using the segment register FS for accessing the TLS</p>
+
+<h1 id="how-about-tlsgetaddr-">How about __tls_get_addr ?</h1>
+<hr />
+<p>Apparently, all is good, I can use TLS as I want. But hang on… how about this function that was in the callstack on the 
+Intel blog, <em>__tls_get_addr</em> ?</p>
+
+<blockquote>
+  <p>One thing that always scares me the most when I do micro benchmarks is about the reliability of their results. Indeed, it 
+is very easy to screw up. You have to generate some <em>realistic</em> inputs that will trigger the same behavior that you got
+in production, without too many side effects. And from the D-cache to the BTB, everything is hot…</p>
+</blockquote>
+
+<p>Here, we have a sneaky case: the compilation is part of the environment of our benchmark. If the thread variable is in a dynamic
+module, the linker cannot compute a direct reference to it and we get the much vaunted lookup!</p>
+
+<p>Let’s build it again, as a shared library this time:</p>
+<noscript><pre>cmake_minimum_required(VERSION 2.8)
+
+set(CMAKE_CXX_FLAGS &quot;${CMAKE_CXX_FLAGS} -Wall -g -O3 std=c++14&quot;)
+
+add_library(inc SHARED inc.cpp)
+add_executable(tls tls.cpp)
+target_link_libraries(tls inc geiger)</pre></noscript>
+<script src="https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=CMakelists_shared.txt"> </script>
+
+<p><br />
+There is in this case a difference ; the method that accesses the thread local variable takes twice more time. Please not that 
+this overhead is still very small, as in this case we compare it to an extremely cheap operation…</p>
+<noscript><pre>Test      Time (ns) PAPI_TOT_INS PAPI_TOT_CYC  PAPI_BR_MSP
+----------------------------------------------------------
+static            6         1194         2990           20
+tls              12         2694         3568           15</pre></noscript>
+<script src="https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=Output2.txt"> </script>
+
+<p><br />
+The assembly code shows the same difference:</p>
+<noscript><pre>$ disass ./libinc.so &quot;Inc::operator()()&quot;
+Dump of assembler code for function Inc::operator()():
+   0x0000000000000870 &lt;+0&gt;:     mov    rax,QWORD PTR [rip+0x200781]
+   0x0000000000000877 &lt;+7&gt;:     inc    DWORD PTR [rax]
+   0x0000000000000879 &lt;+9&gt;:     ret    
+End of assembler dump.
+
+$ disass ./libinc.so &quot;IncTLS::operator()()&quot;
+Dump of assembler code for function IncTLS::operator()():
+   0x0000000000000880 &lt;+0&gt;:     push   rax
+   0x0000000000000881 &lt;+1&gt;:     data32 lea rdi,[rip+0x20074f]
+   0x0000000000000889 &lt;+9&gt;:     data32 data32 call 0x770 &lt;__tls_get_addr@plt&gt;
+   0x0000000000000891 &lt;+17&gt;:    inc    DWORD PTR [rax]
+   0x0000000000000893 &lt;+19&gt;:    pop    rax
+   0x0000000000000894 &lt;+20&gt;:    ret    
+End of assembler dump.</pre></noscript>
+<script src="https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=Assembly2.txt"> </script>
+
+<h1 id="the-tls-implementation-in-elf">The TLS implementation in ELF</h1>
+<hr />
+<p>As global and static variables are stored in <em>.data</em> and <em>.bss</em> sections, thread local variables get stored in equivalent 
+<em>.tdata</em> and <em>.tbss</em> sections.</p>
+
+<p>Each thread has its on TCB — <em>Thread Control Block</em> — that contains some metadata about the thread itself. One
+metadata is the address of the DTV — Dynamic Thread Vector — which is a vector that contains pointers to 
+thread local variables and other TLS blocks.</p>
+
+<p><img src="/assets/images/tls_implementation.jpg" alt="TLS implementation" /></p>
+
+<p>When using statically linked code, everything is simpler as there is <strong>only one TLS block</strong>. As the offsets to the thread local
+variables are known at link-time, the compiler is able to generate a direct access to the thread local variable. </p>
+
+<p>But when you have dynamic modules, several TLS blocks are present. It is easier to see with the following simplified version 
+of <em>__tls_get_addr</em>. <em>offset</em> is known at build time, then <em>module_id</em> is the only variable, which is zero when using static
+linking.</p>
+<noscript><pre>void* __tls_get_offset(size_t module_id, size_t offset)
+{
+    char* tls_block = dtv[thread_id][module_id];
+    
+    if (tls_block == UNALLOCATED_TLS_BLOCK)
+        tls_block = dtv[thread_id][module_id] = allocate_tls(module_id);
+    
+    return tls_block + offset;
+}</pre></noscript>
+<script src="https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=tls_get_offset.c"> </script>
+
+<p><br />
+This is the actual implementation from the GLibc 2.20:</p>
+<noscript><pre>void *
+__tls_get_addr (GET_ADDR_ARGS)
+{
+  dtv_t *dtv = THREAD_DTV (); 
+
+  if (__glibc_unlikely (dtv[0].counter != GL(dl_tls_generation)))
+    return update_get_addr (GET_ADDR_PARAM);
+
+  void *p = dtv[GET_ADDR_MODULE].pointer.val;
+
+  if (__glibc_unlikely (p == TLS_DTV_UNALLOCATED))
+    return tls_get_addr_tail (GET_ADDR_PARAM, dtv, NULL);
+
+  return (char *) p + GET_ADDR_OFFSET;
+}</pre></noscript>
+<script src="https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=dl-tls.c"> </script>
+
+<p><br />
+The ABI specific parts are implemented in sysdeps ; as for x86_64, we access the TCB from the segment register FS:</p>
+<noscript><pre>/* Return the address of the dtv for the current thread.  */
+# define THREAD_DTV() \
+  ({ struct pthread *__pd;                                                    \
+     THREAD_GETMEM (__pd, header.dtv); })
+
+
+/* Read member of the thread descriptor directly.  */
+# define THREAD_GETMEM(descr, member) \
+  ({ __typeof (descr-&gt;member) __value;                                        \
+     if (sizeof (__value) == 1)                                               \
+       asm volatile (&quot;movb %%fs:%P2,%b0&quot;                                      \
+                     : &quot;=q&quot; (__value)                                         \
+                     : &quot;0&quot; (0), &quot;i&quot; (offsetof (struct pthread, member)));     \
+      ....
+</pre></noscript>
+<script src="https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=x86_64_tls.h"> </script>
+
+<h1 id="so-what">So what?</h1>
+<hr />
+<p>Accessing thread local variables is cheap in all cases ; the lookup done by the glibc is very fast (and always takes a constant time). 
+But if your code is — or could be — loaded as a dynamic module and is very speed critical, then it can be useful to simply
+store the reference to some thread local variables.</p>
+
+<p>More information about the TLS and its implementation on GNU/Linux in <a href="&quot;https://www.akkadia.org/drepper/tls.pdf&quot;">ELF Handling for TLS</a> from Ulrich Drepper.</p>
+
+
+        </section>
+        <footer class="post-footer">
+          <section class="share">
+            
+              
+            
+          </section>
+        </footer>
+        <div class="bottom-teaser cf">
+          <div class="isLeft">
+            <h5 class="index-headline featured"><span>Written by</span></h5>
+            <section class="author">
+              <div class="author-image" style="background-image: url(/assets/images/author.jpg)">Blog Logo</div>
+              <h4>David Gross</h4>
+              <p class="bio"></p>
+              <hr>
+              <p class="published">Published <time datetime="2016-03-20 19:03">20 Mar 2016</time></p>
+            </section>
+          </div>
+          
+          <div class="isRight">
+            <h5 class="index-headline featured"><span>Supported by</span></h5>
+            <footer class="site-footer">
+              <section class="poweredby">Proudly published with <a href="http://jekyllrb.com"> Jekyll</a></section>
+              <a class="subscribe" href="/feed.xml"> <span class="tooltip"> <i class="fa fa-rss"></i> You should subscribe to my feed.</span></a>
+              <div class="inner">
+                <section class="copyright">All content copyright <a href="/">David Gross</a> &copy; 2016<br>All rights reserved.</section>
+              </div>
+            </footer>
+          </div>
+        </div>
+        
+      </article>
+    </main>
+    <div class="bottom-closer">
+      <div class="background-closer-image"  style="background-image: url(/assets/images/cover.jpg)">
+        Image
+      </div>
+      <div class="inner">
+        <h1 class="blog-title">Thoughts from a Wall Street developer</h1>
+        <h2 class="blog-description">A blog about C++, with an emphasis on low-latency, performance measurements and system programming.
+</h2>
+        <a href="/" class="btn">Back to Overview</a>
+      </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+<script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+<script type="text/javascript" src="/assets/js/index.js"></script>
+<script type="text/javascript" src="/assets/js/readingTime.min.js"></script>
+<script>
+(function ($) {
+  "use strict";
+  $(document).ready(function(){
+
+    var $window = $(window),
+    $image = $('.post-image-image, .teaserimage-image');
+    
+      $window.on('scroll', function() {
+        var top = $window.scrollTop();
+
+        if (top < 0 || top > 1500) { return; }
+        $image
+          .css('transform', 'translate3d(0px, '+top/3+'px, 0px)')
+          .css('opacity', 1-Math.max(top/700, 0));
+      });
+      $window.trigger('scroll');
+
+      var height = $('.article-image').height();
+      $('.post-content').css('padding-top', height + 'px');
+
+      $('a[href*=#]:not([href=#])').click(function() {
+        if (location.pathname.replace(/^\//,'') == this.pathname.replace(/^\//,'')
+         && location.hostname == this.hostname) {
+          var target = $(this.hash);
+          target = target.length ? target : $('[name=' + this.hash.slice(1) +']');
+          if (target.length) {
+            $('html,body').animate({ scrollTop: target.offset().top }, 500);
+            return false;
+          }
+        }
+      });
+
+  });
+}(jQuery));
+</script>
+
+
+  </body>
+</html>
