@@ -6,8 +6,8 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Fri, 25 Mar 2016 16:59:56 +0100</pubDate>
-    <lastBuildDate>Fri, 25 Mar 2016 16:59:56 +0100</lastBuildDate>
+    <pubDate>Fri, 25 Mar 2016 17:31:23 +0100</pubDate>
+    <lastBuildDate>Fri, 25 Mar 2016 17:31:23 +0100</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
     
       <item>
@@ -24,7 +24,7 @@ a consequent overhead.&lt;/p&gt;
 thread-local variables&lt;/a&gt;.
 Among pro-tips like “you simply have to buy a Intel©® VTune™ licence and don’t forget the Parallel Studio XE©®™ it
 only costs 2k$”, the awesome screenshots or the comment section where someone says that the code is slow due to the TLS 
-implementation of Windows while another one points out the code was running under Linux, I simply decided to &lt;em&gt;_figure out myself&lt;/em&gt;.&lt;/p&gt;
+implementation of Windows while another one points out the code was running under Linux, I simply decided to &lt;em&gt;figure out myself&lt;/em&gt;.&lt;/p&gt;
 
 &lt;p&gt;So I did what I prefer: I profiled it.&lt;/p&gt;
 
