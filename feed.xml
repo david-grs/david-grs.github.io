@@ -6,8 +6,8 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Fri, 25 Mar 2016 16:27:34 +0100</pubDate>
-    <lastBuildDate>Fri, 25 Mar 2016 16:27:34 +0100</lastBuildDate>
+    <pubDate>Fri, 25 Mar 2016 16:59:56 +0100</pubDate>
+    <lastBuildDate>Fri, 25 Mar 2016 16:59:56 +0100</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
     
       <item>
@@ -20,7 +20,7 @@ was not so constant across different sockets. &lt;/p&gt;
 was widely used in my project and was taking so far a couple of CPU cycles, and I wanted to be sure that the TLS would not add
 a consequent overhead.&lt;/p&gt;
 
-&lt;p&gt;A quick look on Google only revealed an article from the Intel Developer Zone: &lt;a href=&quot;&amp;quot;https://software.intel.com/en-us/blogs/2011/05/02/the-hidden-performance-cost-of-accessing-thread-local-variables&amp;quot;&quot;&gt;the hidden performance cost of accessing 
+&lt;p&gt;A quick look on Google only revealed an article from the Intel Developer Zone: &lt;a href=&quot;https://software.intel.com/en-us/blogs/2011/05/02/the-hidden-performance-cost-of-accessing-thread-local-variables&quot;&gt;the hidden performance cost of accessing 
 thread-local variables&lt;/a&gt;.
 Among pro-tips like “you simply have to buy a Intel©® VTune™ licence and don’t forget the Parallel Studio XE©®™ it
 only costs 2k$”, the awesome screenshots or the comment section where someone says that the code is slow due to the TLS 
@@ -275,7 +275,7 @@ once &lt;em&gt;__tls_get_addr&lt;/em&gt;. This could be done by, for example, &l
 
 &lt;p&gt;One could think about &lt;em&gt;keeping the reference&lt;/em&gt; of the thread local variable, but I found this solution very dodgy. You might have to prepare your arguments to pass the code review :) …&lt;/p&gt;
 
-&lt;p&gt;More information about the TLS and its implementation on GNU/Linux in &lt;a href=&quot;&amp;quot;https://www.akkadia.org/drepper/tls.pdf&amp;quot;&quot;&gt;ELF Handling for TLS&lt;/a&gt; from Ulrich Drepper.&lt;/p&gt;
+&lt;p&gt;More information about the TLS and its implementation on GNU/Linux in &lt;a href=&quot;https://www.akkadia.org/drepper/tls.pdf&quot; title=&quot;ELF Handling for TLS from Ulrich Drepper&quot;&gt;ELF Handling for TLS&lt;/a&gt; from Ulrich Drepper.&lt;/p&gt;
 
 </description>
         <pubDate>Sun, 20 Mar 2016 19:03:20 +0100</pubDate>

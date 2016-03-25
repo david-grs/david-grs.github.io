@@ -74,7 +74,7 @@ was not so constant across different sockets. </p>
 was widely used in my project and was taking so far a couple of CPU cycles, and I wanted to be sure that the TLS would not add
 a consequent overhead.</p>
 
-<p>A quick look on Google only revealed an article from the Intel Developer Zone: <a href="&quot;https://software.intel.com/en-us/blogs/2011/05/02/the-hidden-performance-cost-of-accessing-thread-local-variables&quot;">the hidden performance cost of accessing 
+<p>A quick look on Google only revealed an article from the Intel Developer Zone: <a href="https://software.intel.com/en-us/blogs/2011/05/02/the-hidden-performance-cost-of-accessing-thread-local-variables">the hidden performance cost of accessing 
 thread-local variables</a>.
 Among pro-tips like “you simply have to buy a Intel©® VTune™ licence and don’t forget the Parallel Studio XE©®™ it
 only costs 2k$”, the awesome screenshots or the comment section where someone says that the code is slow due to the TLS 
@@ -329,7 +329,7 @@ once <em>__tls_get_addr</em>. This could be done by, for example, <strong>inlini
 
 <p>One could think about <em>keeping the reference</em> of the thread local variable, but I found this solution very dodgy. You might have to prepare your arguments to pass the code review :) …</p>
 
-<p>More information about the TLS and its implementation on GNU/Linux in <a href="&quot;https://www.akkadia.org/drepper/tls.pdf&quot;">ELF Handling for TLS</a> from Ulrich Drepper.</p>
+<p>More information about the TLS and its implementation on GNU/Linux in <a href="https://www.akkadia.org/drepper/tls.pdf" title="ELF Handling for TLS from Ulrich Drepper">ELF Handling for TLS</a> from Ulrich Drepper.</p>
 
 
         </section>
