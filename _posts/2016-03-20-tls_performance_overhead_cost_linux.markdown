@@ -18,7 +18,7 @@ A quick look on Google only revealed an article from the Intel Developer Zone: [
 thread-local variables](https://software.intel.com/en-us/blogs/2011/05/02/the-hidden-performance-cost-of-accessing-thread-local-variables).
 Among pro-tips like "you simply have to buy a Intel&copy;&reg; VTune&trade; licence and don't forget the Parallel Studio XE&copy;&reg;&trade; it
 only costs 2k$", the awesome screenshots or the comment section where someone says that the code is slow due to the TLS 
-implementation of Windows while another one points out the code was running under Linux, I simply decided to __figure out myself_.
+implementation of Windows while another one points out the code was running under Linux, I simply decided to _figure out myself_.
 
 So I did what I prefer: I profiled it.
 
