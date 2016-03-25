@@ -15,7 +15,7 @@ was widely used in my project and was taking so far a couple of CPU cycles, and 
 a consequent overhead.
 
 A quick look on Google only revealed an article from the Intel Developer Zone: [the hidden performance cost of accessing 
-thread-local variables]("https://software.intel.com/en-us/blogs/2011/05/02/the-hidden-performance-cost-of-accessing-thread-local-variables").
+thread-local variables](https://software.intel.com/en-us/blogs/2011/05/02/the-hidden-performance-cost-of-accessing-thread-local-variables).
 Among pro-tips like "you simply have to buy a Intel&copy;&reg; VTune&trade; licence and don't forget the Parallel Studio XE&copy;&reg;&trade; it
 only costs 2k$", the awesome screenshots or the comment section where someone says that the code is slow due to the TLS 
 implementation of Windows while another one points out the code was running under Linux, I simply decided to __figure out myself_.
@@ -122,6 +122,6 @@ once _\_\_tls\_get\_addr_. This could be done by, for example, __inlining__ the 
 
 One could think about _keeping the reference_ of the thread local variable, but I found this solution very dodgy. You might have to prepare your arguments to pass the code review :) ...
 
-More information about the TLS and its implementation on GNU/Linux in [ELF Handling for TLS]("https://www.akkadia.org/drepper/tls.pdf") from Ulrich Drepper.
+More information about the TLS and its implementation on GNU/Linux in [ELF Handling for TLS](https://www.akkadia.org/drepper/tls.pdf "ELF Handling for TLS from Ulrich Drepper") from Ulrich Drepper.
 
 
