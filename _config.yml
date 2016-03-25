@@ -8,10 +8,9 @@ title: "Thoughts from a Wall Street developer"
 description: > # this means to ignore newlines until "email:"
         A blog about C++, with an emphasis on low-latency, performance measurements and system programming.
 
-#blog logo
 #logo: "/assets/images/df_logo.jpg"
-# blog cover
 cover: "/assets/images/cover.jpg"
+permalink: "/:title"
 
 name: 'David Gross'
 author: 'David Gross'
