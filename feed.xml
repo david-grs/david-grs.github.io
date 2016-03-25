@@ -6,8 +6,8 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Fri, 25 Mar 2016 11:58:23 +0100</pubDate>
-    <lastBuildDate>Fri, 25 Mar 2016 11:58:23 +0100</lastBuildDate>
+    <pubDate>Fri, 25 Mar 2016 12:25:42 +0100</pubDate>
+    <lastBuildDate>Fri, 25 Mar 2016 12:25:42 +0100</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
     
       <item>
@@ -279,8 +279,8 @@ once &lt;em&gt;__tls_get_addr&lt;/em&gt;. This could be done by, for example, &l
 
 </description>
         <pubDate>Sun, 20 Mar 2016 19:03:20 +0100</pubDate>
-        <link>http://david-grs.github.io/2016/03/20/tls_performance_overhead_cost_linux.html</link>
-        <guid isPermaLink="true">http://david-grs.github.io/2016/03/20/tls_performance_overhead_cost_linux.html</guid>
+        <link>http://david-grs.github.io/tls_performance_overhead_cost_linux</link>
+        <guid isPermaLink="true">http://david-grs.github.io/tls_performance_overhead_cost_linux</guid>
         
         
       </item>
