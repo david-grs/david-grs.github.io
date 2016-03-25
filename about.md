@@ -4,14 +4,20 @@ title: About
 permalink: /about/
 ---
 
-A medium inspired Jekyll blog theme. The basic idea came from the Ghost theme 
-[Readium 2.0](http://www.svenread.com/readium-ghost-theme/). I use mediator on my own blog [The Base](blog.base68.com).
+Hi there, I am David Gross, an enthusiastic software developer. 
 
-You can **download** the theme here:
-[https://github.com/dirkfabisch/mediator](https://github.com/dirkfabisch/mediator) 
+With this blog, I aim to share some experiments, knowledge or ideas I have about
+programming. It will be most of the time around high performance computing: speed critical 
+code, high throughput, multi threading. I also use exclusively GNU/Linux.
 
-You can find out more info about customizing your Jekyll theme, as well as basic Jekyll usage documentation at [jekyllrb.com](http://jekyllrb.com/)
+I work for a fabulous [private trading company](http://www.optiver.com/) since 2014, as 
+autotrading developer. Before, I was working few years for the French Ministry of Defence. Both
+jobs were different in many ways, but still focus on C++ and performance.
 
-You can find the source code for the Jekyll new theme at: [github.com/jglovier/jekyll-new](https://github.com/jglovier/jekyll-new)
+Aside from job, I am a passionate rock climber and philosophy reader &mdash; no worries, I will not
+bother you with that here!
 
-You can find the source code for Jekyll at [github.com/jekyll/jekyll](https://github.com/jekyll/jekyll)
+Feel free to [contact me](mailto:gdavid.devel@gmail.com) for any comments, suggestions, questions, ...
+
+David
+
