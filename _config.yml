@@ -13,6 +13,7 @@ permalink: "/:title"
 
 name: 'David Gross'
 author: 'David Gross'
+email: 'gdavid.devel@gmail.com'
 author_image: "/assets/images/author.jpg"
 
 paginate:	5
