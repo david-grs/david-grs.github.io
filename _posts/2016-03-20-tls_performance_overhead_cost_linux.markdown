@@ -3,6 +3,7 @@ layout: post
 title:  "TLS performance overhead and cost on GNU/Linux"
 author: David Gross
 date:   2016-03-20 18:03:20
+redirect_from: "/2016/03/20/tls_performance_overhead_cost_linux.html"
 ---
 
 

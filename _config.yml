@@ -2,6 +2,7 @@
 gems:
   - jemoji
   - jekyll-paginate
+  - jekyll-redirect-from
 
 title: "Thoughts from a Wall Street developer"
 description: > # this means to ignore newlines until "email:"
