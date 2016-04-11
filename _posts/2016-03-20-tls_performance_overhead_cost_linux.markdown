@@ -13,7 +13,7 @@ was not so constant across different sockets.
 
 Per-thread and static variables: that sounds like a perfect case for Thread-Local Storage (TLS). However this time clock
 was widely used in my project and was taking so far a couple of CPU cycles, and I wanted to be sure that the TLS would not add
-a consequent overhead.
+a significant overhead.
 
 A quick look on Google only revealed an article from the Intel Developer Zone: [the hidden performance cost of accessing 
 thread-local variables](https://software.intel.com/en-us/blogs/2011/05/02/the-hidden-performance-cost-of-accessing-thread-local-variables).
@@ -28,7 +28,7 @@ So I did what I prefer: I profiled it.
 > entire data is known at link-time, which allows the pre-calculation of all offsets.
 > <p>&nbsp;</p>
 > If you are using **dynamic modules**, there will be a lookup each time you access the thread local variable, but
-> you have some options in order to avoid it in speed critical code.
+> you have some options in order to avoid it in speed-critical code.
 
 
 #&micro;-benchmarking the access of TLS data
@@ -39,15 +39,14 @@ local variable, through a static method of the class.
 {% gist david-grs/8f8f38b6b63216a97c5c inc.hpp %}
 {% gist david-grs/8f8f38b6b63216a97c5c inc.cpp %}
 <br />
-Note that the _thread\_local_ keyword has been introduced in C++11, but is only accessible from GCC 4.8. Earlier, you still
-have to use _\_\_thread_.
+Note that the _thread\_local_ keyword was introduced in C++11, and implemented in GCC 4.8 or newer. If you are using an older version, you can use the _\_\_thread_ GCC keyword.
 
-To benchmark the code, I am using [geiger](https://github.com/david-grs/geiger "Geiger, a micro benchmark library in C++"), a micro
-benchmark library in C++ I developed. The main advantage of geiger is to read [hardware performance counters](https://perf.wiki.kernel.org/index.php/Main_Page "Profiling hardware counters").
-I might write a post about it later. 
+To time my experiments,  I am using [geiger](https://github.com/david-grs/geiger "Geiger, a benchmarking library in C++"), a benchmarking library I developed. 
+geiger can read [hardware performance counters](https://perf.wiki.kernel.org/index.php/Main_Page "Profiling hardware counters") &mdash; using the PAPI library &mdash; 
+and is ideal to benchmark very short snippets of code.
 
-Here, I simply declare a suite of benchmark and add two tests, one that accesses the static data and the second one the thread local variable. I run twice the suite, the first time I only
-do one iteration, and 100 iterations the second run ; I will come back to that later.
+Here, I simply declare a benchmark suite with two tests. The first one accesses static data, and the second one thread local data. The suite is run twice: the first time, each test is run once, 
+and the second time, each test is run one hundred times.
 
 {% gist david-grs/8f8f38b6b63216a97c5c tls.cpp %}
 <br />
@@ -55,7 +54,7 @@ Let's build it with our favorite flags:
 {% gist david-grs/8f8f38b6b63216a97c5c CMakelists.txt %}
 <br />
 The results are quite straightforward: no overhead at all. There is always a bit of jitter with hardware counters, so do not 
-guess we have more cycles with the TLS test, there is quite some variance here between several runs.
+conclude we have more cycles with the TLS test, there is quite some variance here between several runs.
 {% gist david-grs/8f8f38b6b63216a97c5c Output.txt %}
 <br />
 The assembly code also confirms it. I build with CLang 3.6 but I got the same with GCC 4.7:
@@ -115,7 +114,7 @@ The ABI specific parts are implemented in sysdeps ; as for x86_64, we access the
 #So what?
 ---------
 Accessing thread local variables is cheap in both cases ; the lookup done by the glibc is very fast (and takes a constant time). 
-But if your code is &mdash; or could be &mdash; loaded as a dynamic module and is speed critical, then it can be worth spending
+But if your code is &mdash; or could be &mdash; loaded as a dynamic module and is speed-critical, then it can be worth spending
 some time to __avoid this lookup__.
 
 One easy win could be to access the thread local data from the same block of code. The compiler will be smart enough to call only
