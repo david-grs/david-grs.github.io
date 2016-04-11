@@ -93,7 +93,7 @@ was not so constant across different sockets. </p>
 
 <p>Per-thread and static variables: that sounds like a perfect case for Thread-Local Storage (TLS). However this time clock
 was widely used in my project and was taking so far a couple of CPU cycles, and I wanted to be sure that the TLS would not add
-a consequent overhead.</p>
+a significant overhead.</p>
 
 <p>A quick look on Google only revealed an article from the Intel Developer Zone: <a href="https://software.intel.com/en-us/blogs/2011/05/02/the-hidden-performance-cost-of-accessing-thread-local-variables">the hidden performance cost of accessing 
 thread-local variables</a>.
@@ -109,7 +109,7 @@ implementation of Windows while another one points out the code was running unde
 entire data is known at link-time, which allows the pre-calculation of all offsets.</p>
   <p>&nbsp;</p>
   <p>If you are using <strong>dynamic modules</strong>, there will be a lookup each time you access the thread local variable, but
-you have some options in order to avoid it in speed critical code.</p>
+you have some options in order to avoid it in speed-critical code.</p>
 </blockquote>
 
 <h1 id="micro-benchmarking-the-access-of-tls-data">µ-benchmarking the access of TLS data</h1>
@@ -142,15 +142,14 @@ void IncTLS::operator()() { ++m_counter; }</pre></noscript>
 <script src="https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=inc.cpp"> </script>
 
 <p><br />
-Note that the <em>thread_local</em> keyword has been introduced in C++11, but is only accessible from GCC 4.8. Earlier, you still
-have to use <em>__thread</em>.</p>
+Note that the <em>thread_local</em> keyword was introduced in C++11, and implemented in GCC 4.8 or newer. If you are using an older version, you can use the <em>__thread</em> GCC keyword.</p>
 
-<p>To benchmark the code, I am using <a href="https://github.com/david-grs/geiger" title="Geiger, a micro benchmark library in C++">geiger</a>, a micro
-benchmark library in C++ I developed. The main advantage of geiger is to read <a href="https://perf.wiki.kernel.org/index.php/Main_Page" title="Profiling hardware counters">hardware performance counters</a>.
-I might write a post about it later. </p>
+<p>To time my experiments,  I am using <a href="https://github.com/david-grs/geiger" title="Geiger, a benchmarking library in C++">geiger</a>, a benchmarking library I developed. 
+geiger can read <a href="https://perf.wiki.kernel.org/index.php/Main_Page" title="Profiling hardware counters">hardware performance counters</a> — using the PAPI library — 
+and is ideal to benchmark very short snippets of code.</p>
 
-<p>Here, I simply declare a suite of benchmark and add two tests, one that accesses the static data and the second one the thread local variable. I run twice the suite, the first time I only
-do one iteration, and 100 iterations the second run ; I will come back to that later.</p>
+<p>Here, I simply declare a benchmark suite with two tests. The first one accesses static data, and the second one thread local data. The suite is run twice: the first time, each test is run once, 
+and the second time, each test is run one hundred times.</p>
 
 <noscript><pre>#include &quot;inc.hpp&quot;
 
@@ -195,7 +194,7 @@ target_link_libraries(tls geiger)</pre></noscript>
 
 <p><br />
 The results are quite straightforward: no overhead at all. There is always a bit of jitter with hardware counters, so do not 
-guess we have more cycles with the TLS test, there is quite some variance here between several runs.</p>
+conclude we have more cycles with the TLS test, there is quite some variance here between several runs.</p>
 <noscript><pre>Test      Time (ns) PAPI_TOT_INS PAPI_TOT_CYC  PAPI_BR_MSP
 ----------------------------------------------------------
 static            4          994         1699           12
@@ -342,7 +341,7 @@ The ABI specific parts are implemented in sysdeps ; as for x86_64, we access the
 <h1 id="so-what">So what?</h1>
 <hr />
 <p>Accessing thread local variables is cheap in both cases ; the lookup done by the glibc is very fast (and takes a constant time). 
-But if your code is — or could be — loaded as a dynamic module and is speed critical, then it can be worth spending
+But if your code is — or could be — loaded as a dynamic module and is speed-critical, then it can be worth spending
 some time to <strong>avoid this lookup</strong>.</p>
 
 <p>One easy win could be to access the thread local data from the same block of code. The compiler will be smart enough to call only
