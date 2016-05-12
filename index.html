@@ -111,10 +111,9 @@
               <h2 class="post-title" itemprop="name"><a href="/low_latency_stack_based_boost_any" itemprop="url">static any: a low-latency stack-based Boost.Any</a></h2>
             </header>
             <section class="post-excerpt" itemprop="description">
-              <p>
-  Talk is cheap. Show me the code.
-  static_any project on my github
-
+              <p>When writing some speed-critical code, I wanted to use Boost.Any as an attribute in a struct. This struct
+was small — 2 cache lines — and I knew that all the types that I would store in this Any
+would fit in 16bytes. 
 
 </p>
             </section>

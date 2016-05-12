@@ -6,29 +6,29 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Thu, 12 May 2016 22:37:56 +0200</pubDate>
-    <lastBuildDate>Thu, 12 May 2016 22:37:56 +0200</lastBuildDate>
+    <pubDate>Thu, 12 May 2016 22:41:57 +0200</pubDate>
+    <lastBuildDate>Thu, 12 May 2016 22:41:57 +0200</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
     
       <item>
         <title>static any: a low-latency stack-based Boost.Any</title>
-        <description>&lt;blockquote&gt;
-  &lt;h1 id=&quot;talk-is-cheap-show-me-the-code&quot;&gt;Talk is cheap. Show me the code.&lt;/h1&gt;
-  &lt;p&gt;&lt;a href=&quot;https://github.com/david-grs/static_any&quot;&gt;static_any project on my github&lt;/a&gt;&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;When writing some speed-critical code, I wanted to use &lt;em&gt;Boost.Any&lt;/em&gt; as an attribute in a struct. This struct
+        <description>&lt;p&gt;When writing some speed-critical code, I wanted to use &lt;em&gt;Boost.Any&lt;/em&gt; as an attribute in a struct. This struct
 was small — 2 cache lines — and I knew that all the types that I would store in this &lt;em&gt;Any&lt;/em&gt;
 would fit in 16bytes. &lt;/p&gt;
 
 &lt;blockquote&gt;
-  &lt;p&gt;I thought “trivial, let’s use Boost.Any with a stack-based allocator”!
+  &lt;p&gt;I thought “trivial, let’s use Boost.Any with a stack-based allocator”!&lt;br /&gt;
 … and then I got disappointed.&lt;/p&gt;
 &lt;/blockquote&gt;
 
 &lt;p&gt;Disappointed, because &lt;em&gt;Boost.Any&lt;/em&gt; does not offer the possibility to use a custom allocator. To be honest, that would 
 not have solved the story anyway, as &lt;em&gt;Boost.Any&lt;/em&gt; does other things that slow down this container, 
 but that was enough to start thinking about a another — home-made — solution.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;h1 id=&quot;talk-is-cheap-show-me-the-code&quot;&gt;Talk is cheap. Show me the code.&lt;/h1&gt;
+  &lt;p&gt;&lt;a href=&quot;https://github.com/david-grs/static_any&quot;&gt;static_any project on my github&lt;/a&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
 
 &lt;h2 id=&quot;boostany-implementation&quot;&gt;Boost.Any implementation&lt;/h2&gt;
 &lt;p&gt;So why was &lt;em&gt;Boost.Any&lt;/em&gt; too slow in my case ? And why was I looking for a stack-based allocator ?&lt;/p&gt;
