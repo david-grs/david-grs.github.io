@@ -6,9 +6,68 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Mon, 11 Apr 2016 21:14:13 +0200</pubDate>
-    <lastBuildDate>Mon, 11 Apr 2016 21:14:13 +0200</lastBuildDate>
+    <pubDate>Thu, 12 May 2016 22:37:56 +0200</pubDate>
+    <lastBuildDate>Thu, 12 May 2016 22:37:56 +0200</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
+    
+      <item>
+        <title>static any: a low-latency stack-based Boost.Any</title>
+        <description>&lt;blockquote&gt;
+  &lt;h1 id=&quot;talk-is-cheap-show-me-the-code&quot;&gt;Talk is cheap. Show me the code.&lt;/h1&gt;
+  &lt;p&gt;&lt;a href=&quot;https://github.com/david-grs/static_any&quot;&gt;static_any project on my github&lt;/a&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;When writing some speed-critical code, I wanted to use &lt;em&gt;Boost.Any&lt;/em&gt; as an attribute in a struct. This struct
+was small — 2 cache lines — and I knew that all the types that I would store in this &lt;em&gt;Any&lt;/em&gt;
+would fit in 16bytes. &lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;I thought “trivial, let’s use Boost.Any with a stack-based allocator”!
+… and then I got disappointed.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Disappointed, because &lt;em&gt;Boost.Any&lt;/em&gt; does not offer the possibility to use a custom allocator. To be honest, that would 
+not have solved the story anyway, as &lt;em&gt;Boost.Any&lt;/em&gt; does other things that slow down this container, 
+but that was enough to start thinking about a another — home-made — solution.&lt;/p&gt;
+
+&lt;h2 id=&quot;boostany-implementation&quot;&gt;Boost.Any implementation&lt;/h2&gt;
+&lt;p&gt;So why was &lt;em&gt;Boost.Any&lt;/em&gt; too slow in my case ? And why was I looking for a stack-based allocator ?&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Boost.Any&lt;/em&gt; is very simple: it erases the type via inheritance, and the few required operations, which are querying the type
+and cloning the objects, are done via virtual methods. Here is a skeleton:&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;  struct any
+  {
+      struct placeholder { ... };
+
+      template &amp;lt;typename _T&amp;gt; 
+      struct holder : public placeholder {  _T; ... }
+
+      template &amp;lt;typename _T&amp;gt; 
+      any(const _T&amp;amp; t) : m_placeholder(new holder&amp;lt;_T&amp;gt;(t)) {}
+
+  private:
+      holder* m_placeholder;
+  };&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/8b727b6d2e71361ffa730df4004b449c.js?file=boost_any_impl&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+My main issue regarding this implementation was not at all with the costs of calling virtual methods, but with
+the memory layout that this would imply to my structure.&lt;/p&gt;
+
+&lt;p&gt;I knew that my stored types were small, and I wanted them on the same &lt;strong&gt;cache line&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;staticany&quot;&gt;static_any&lt;/h2&gt;
+&lt;p&gt;This is why I started developing static_any. At the very beginning, I only implemented it for trivially copyable types, 
+as I was only using the container with this kind of objects. This super simple and fast container is in the same header 
+&lt;em&gt;any.hpp&lt;/em&gt; under the name of static_any_t. &lt;/p&gt;
+
+</description>
+        <pubDate>Thu, 12 May 2016 21:48:00 +0200</pubDate>
+        <link>http://david-grs.github.io/low_latency_stack_based_boost_any</link>
+        <guid isPermaLink="true">http://david-grs.github.io/low_latency_stack_based_boost_any</guid>
+        
+        
+      </item>
     
       <item>
         <title>TLS performance overhead and cost on GNU/Linux</title>
@@ -120,10 +179,10 @@ target_link_libraries(tls geiger)&lt;/pre&gt;&lt;/noscript&gt;
 &lt;p&gt;&lt;br /&gt;
 The results are quite straightforward: no overhead at all. There is always a bit of jitter with hardware counters, so do not 
 conclude we have more cycles with the TLS test, there is quite some variance here between several runs.&lt;/p&gt;
-&lt;noscript&gt;&lt;pre&gt;Test      Time (ns) PAPI_TOT_INS PAPI_TOT_CYC  PAPI_BR_MSP
-----------------------------------------------------------
-static            4          994         1699           12
-tls               4          994         1812           10&lt;/pre&gt;&lt;/noscript&gt;
+&lt;noscript&gt;&lt;pre&gt;Test      Time (ns)   PAPI_TOT_INS    PAPI_TOT_CYC   PAPI_BR_MSP
+----------------------------------------------------------------
+static            4            994           1,699            12
+tls               4            994           1,812            10&lt;/pre&gt;&lt;/noscript&gt;
 &lt;script src=&quot;https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=Output.txt&quot;&gt; &lt;/script&gt;
 
 &lt;p&gt;&lt;br /&gt;
@@ -171,10 +230,10 @@ target_link_libraries(tls inc geiger)&lt;/pre&gt;&lt;/noscript&gt;
 &lt;p&gt;&lt;br /&gt;
 There is in this case a difference ; the method that accesses the thread local variable takes twice more time. Please not that 
 this overhead is still very small, as in this case we compare it to an extremely cheap operation…&lt;/p&gt;
-&lt;noscript&gt;&lt;pre&gt;Test      Time (ns) PAPI_TOT_INS PAPI_TOT_CYC  PAPI_BR_MSP
-----------------------------------------------------------
-static            6         1194         2990           20
-tls              12         2694         3568           15&lt;/pre&gt;&lt;/noscript&gt;
+&lt;noscript&gt;&lt;pre&gt;Test      Time (ns)   PAPI_TOT_INS    PAPI_TOT_CYC   PAPI_BR_MSP
+----------------------------------------------------------------
+static            6          1,194           2,990            20
+tls              12          2,694           3,568            15&lt;/pre&gt;&lt;/noscript&gt;
 &lt;script src=&quot;https://gist.github.com/david-grs/8f8f38b6b63216a97c5c.js?file=Output2.txt&quot;&gt; &lt;/script&gt;
 
 &lt;p&gt;&lt;br /&gt;
