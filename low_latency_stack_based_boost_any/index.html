@@ -7,7 +7,7 @@
   <!-- (1) force latest IE rendering engine: bit.ly/1c8EiC9 -->
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
-  <title>static any: a low-latency stack-based Boost.Any</title>
+  <title>static_any: a low-latency stack-based Boost.Any</title>
   <meta name="description" content="When writing some speed-critical code, I wanted to use Boost.Any as an attribute in a struct. This structwas small — 2 cache lines — and I knew that all the types that I would store in this Anywoul..." />
 
   <meta name="HandheldFriendly" content="True" />
@@ -17,7 +17,7 @@
   
   
   <meta property="og:site_name" content="Thoughts from a Wall Street developer" />
-  <meta property="og:title" content="static any: a low-latency stack-based Boost.Any"/>
+  <meta property="og:title" content="static_any: a low-latency stack-based Boost.Any"/>
   
   <meta property="og:description" content="When writing some speed-critical code, I wanted to use Boost.Any as an attribute in a struct. This structwas small — 2 cache lines — and I knew that all the types that I would store in this Anywoul..." />
   
@@ -68,7 +68,7 @@
         
         <div class="noarticleimage">
           <div class="post-meta">
-            <h1 class="post-title">static any: a low-latency stack-based Boost.Any</h1>
+            <h1 class="post-title">static_any: a low-latency stack-based Boost.Any</h1>
             <div class="cf post-meta-text">
               <div class="author-image" style="background-image: url(/assets/images/author.jpg)">Blog Logo</div>
               <h4 class="author-name" itemprop="author" itemscope itemtype="http://schema.org/Person">David Gross</h4>
@@ -131,7 +131,7 @@ the memory layout that this would imply to my structure.</p>
 
 <p>I knew that my stored types were small, and I wanted them on the same <strong>cache line</strong>.</p>
 
-<p>To be more concrete, with the following code: </p>
+<p>To be more concrete, let’s take the following code: </p>
 <noscript><pre>  struct foo
   {
       int i;
@@ -145,7 +145,7 @@ the memory layout that this would imply to my structure.</p>
 
 <p><br />
 The variables <em>i</em> and <em>l</em> are next to each other in memory, but the integer <em>1234</em> will be somewhere else — due to
-the heap-based implementation of <em>Boost.Any</em> —, maybe even on another page.</p>
+the heap-based implementation of <em>Boost.Any</em> — and maybe even on another page.</p>
 
 <p>And of course, you get all the benefits when having these variables located in the same contiguous chunk of memory: better
 data-locality means less memory cache misses and a better prefetching.</p>
@@ -163,9 +163,29 @@ when you benchmark a piece of code, you run this one in a loop, and you do not g
 sppeed</em> and most of the time, instructions per cycle for such operations won’t be your bottleneck, but memory can be one.</p>
 
 <h2 id="staticany">static_any</h2>
-<p>This is why I started developing static_any. At the very beginning, I only implemented it for trivially copyable types, 
-as I was only using the container with this kind of objects. This super simple and fast container is in the same header 
-<em>any.hpp</em> under the name of static_any_t. </p>
+<p>The usage is as simple as <em>Boost.Any</em>:</p>
+<noscript><pre>static_any&lt;32&gt; a = 1234;
+int x = a.get&lt;int&gt;(); // returns 1234
+
+bool bi = a.has&lt;int&gt;(); // returns true
+bool bd = a.has&lt;double&gt;(); // returns false
+
+double d = a.get&lt;double&gt;(); // throws!
+
+a = std::string(&quot;hello world&quot;); // moved to a</pre></noscript>
+<script src="https://gist.github.com/david-grs/8b727b6d2e71361ffa730df4004b449c.js?file=static_any_example"> </script>
+
+<p><br /></p>
+
+<p>At the beginning, I only implemented it for trivially copyable types, as I was only using this container with such objects. This super simple 
+and even faster container — but unsafe, as there is no type checking at runtime — is in the same header <em>any.hpp</em> under the name 
+of <em>static_any_t</em>.</p>
+
+<p>Later, after few discussions with <a href="https://github.com/maciekgajewski">my workmate Maciek</a>, he got the awesome idea about the <em>gateway function</em>
+that allows <em>static_any</em> to go from the erased type — the vector of bytes that is used as underlying in <em>static_any</em> — to the real
+type T that is stored.</p>
+
+<p>I will describe that in a later post, meanwhile you can grab the code…</p>
 
 
         </section>

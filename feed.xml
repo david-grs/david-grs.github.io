@@ -6,12 +6,12 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Fri, 13 May 2016 00:17:52 +0200</pubDate>
-    <lastBuildDate>Fri, 13 May 2016 00:17:52 +0200</lastBuildDate>
+    <pubDate>Fri, 13 May 2016 00:43:41 +0200</pubDate>
+    <lastBuildDate>Fri, 13 May 2016 00:43:41 +0200</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
     
       <item>
-        <title>static any: a low-latency stack-based Boost.Any</title>
+        <title>static_any: a low-latency stack-based Boost.Any</title>
         <description>&lt;p&gt;When writing some speed-critical code, I wanted to use &lt;em&gt;Boost.Any&lt;/em&gt; as an attribute in a struct. This struct
 was small — 2 cache lines — and I knew that all the types that I would store in this &lt;em&gt;Any&lt;/em&gt;
 would fit in 16bytes. &lt;/p&gt;
@@ -56,7 +56,7 @@ the memory layout that this would imply to my structure.&lt;/p&gt;
 
 &lt;p&gt;I knew that my stored types were small, and I wanted them on the same &lt;strong&gt;cache line&lt;/strong&gt;.&lt;/p&gt;
 
-&lt;p&gt;To be more concrete, with the following code: &lt;/p&gt;
+&lt;p&gt;To be more concrete, let’s take the following code: &lt;/p&gt;
 &lt;noscript&gt;&lt;pre&gt;  struct foo
   {
       int i;
@@ -70,7 +70,7 @@ the memory layout that this would imply to my structure.&lt;/p&gt;
 
 &lt;p&gt;&lt;br /&gt;
 The variables &lt;em&gt;i&lt;/em&gt; and &lt;em&gt;l&lt;/em&gt; are next to each other in memory, but the integer &lt;em&gt;1234&lt;/em&gt; will be somewhere else — due to
-the heap-based implementation of &lt;em&gt;Boost.Any&lt;/em&gt; —, maybe even on another page.&lt;/p&gt;
+the heap-based implementation of &lt;em&gt;Boost.Any&lt;/em&gt; — and maybe even on another page.&lt;/p&gt;
 
 &lt;p&gt;And of course, you get all the benefits when having these variables located in the same contiguous chunk of memory: better
 data-locality means less memory cache misses and a better prefetching.&lt;/p&gt;
@@ -88,9 +88,29 @@ when you benchmark a piece of code, you run this one in a loop, and you do not g
 sppeed&lt;/em&gt; and most of the time, instructions per cycle for such operations won’t be your bottleneck, but memory can be one.&lt;/p&gt;
 
 &lt;h2 id=&quot;staticany&quot;&gt;static_any&lt;/h2&gt;
-&lt;p&gt;This is why I started developing static_any. At the very beginning, I only implemented it for trivially copyable types, 
-as I was only using the container with this kind of objects. This super simple and fast container is in the same header 
-&lt;em&gt;any.hpp&lt;/em&gt; under the name of static_any_t. &lt;/p&gt;
+&lt;p&gt;The usage is as simple as &lt;em&gt;Boost.Any&lt;/em&gt;:&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;static_any&amp;lt;32&amp;gt; a = 1234;
+int x = a.get&amp;lt;int&amp;gt;(); // returns 1234
+
+bool bi = a.has&amp;lt;int&amp;gt;(); // returns true
+bool bd = a.has&amp;lt;double&amp;gt;(); // returns false
+
+double d = a.get&amp;lt;double&amp;gt;(); // throws!
+
+a = std::string(&amp;quot;hello world&amp;quot;); // moved to a&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/8b727b6d2e71361ffa730df4004b449c.js?file=static_any_example&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;At the beginning, I only implemented it for trivially copyable types, as I was only using this container with such objects. This super simple 
+and even faster container — but unsafe, as there is no type checking at runtime — is in the same header &lt;em&gt;any.hpp&lt;/em&gt; under the name 
+of &lt;em&gt;static_any_t&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;Later, after few discussions with &lt;a href=&quot;https://github.com/maciekgajewski&quot;&gt;my workmate Maciek&lt;/a&gt;, he got the awesome idea about the &lt;em&gt;gateway function&lt;/em&gt;
+that allows &lt;em&gt;static_any&lt;/em&gt; to go from the erased type — the vector of bytes that is used as underlying in &lt;em&gt;static_any&lt;/em&gt; — to the real
+type T that is stored.&lt;/p&gt;
+
+&lt;p&gt;I will describe that in a later post, meanwhile you can grab the code…&lt;/p&gt;
 
 </description>
         <pubDate>Thu, 12 May 2016 21:48:00 +0200</pubDate>
