@@ -6,8 +6,8 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Fri, 13 May 2016 00:01:41 +0200</pubDate>
-    <lastBuildDate>Fri, 13 May 2016 00:01:41 +0200</lastBuildDate>
+    <pubDate>Fri, 13 May 2016 00:17:52 +0200</pubDate>
+    <lastBuildDate>Fri, 13 May 2016 00:17:52 +0200</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
     
       <item>
@@ -74,6 +74,18 @@ the heap-based implementation of &lt;em&gt;Boost.Any&lt;/em&gt; —, maybe even 
 
 &lt;p&gt;And of course, you get all the benefits when having these variables located in the same contiguous chunk of memory: better
 data-locality means less memory cache misses and a better prefetching.&lt;/p&gt;
+
+&lt;h2 id=&quot;the-benchmark&quot;&gt;The benchmark&lt;/h2&gt;
+&lt;p&gt;As always when talking about speed, we want to see some numbers. So here you are — it is in nanoseconds, the lower the better:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/bench_any_boost_qvariant.png&quot; alt=&quot;Time spent on assignment and get operations in nanoseconds&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The reason &lt;em&gt;static_any&lt;/em&gt; is faster on assignment is mainly due to the fact that is does not do a memory allocation. On the &lt;em&gt;get&lt;/em&gt; operation,
+it is due to virtual calls and other implementation details.&lt;/p&gt;
+
+&lt;p&gt;But the main thing, the reason I wanted to have such generic container, i.e. a stack-based any, is not shown by these numbers. Because
+when you benchmark a piece of code, you run this one in a loop, and you do not get any cache misses… These numbers are just for &lt;em&gt;raw
+sppeed&lt;/em&gt; and most of the time, instructions per cycle for such operations won’t be your bottleneck, but memory can be one.&lt;/p&gt;
 
 &lt;h2 id=&quot;staticany&quot;&gt;static_any&lt;/h2&gt;
 &lt;p&gt;This is why I started developing static_any. At the very beginning, I only implemented it for trivially copyable types, 

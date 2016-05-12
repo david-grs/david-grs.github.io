@@ -150,6 +150,18 @@ the heap-based implementation of <em>Boost.Any</em> —, maybe even on another p
 <p>And of course, you get all the benefits when having these variables located in the same contiguous chunk of memory: better
 data-locality means less memory cache misses and a better prefetching.</p>
 
+<h2 id="the-benchmark">The benchmark</h2>
+<p>As always when talking about speed, we want to see some numbers. So here you are — it is in nanoseconds, the lower the better:</p>
+
+<p><img src="/assets/images/bench_any_boost_qvariant.png" alt="Time spent on assignment and get operations in nanoseconds" /></p>
+
+<p>The reason <em>static_any</em> is faster on assignment is mainly due to the fact that is does not do a memory allocation. On the <em>get</em> operation,
+it is due to virtual calls and other implementation details.</p>
+
+<p>But the main thing, the reason I wanted to have such generic container, i.e. a stack-based any, is not shown by these numbers. Because
+when you benchmark a piece of code, you run this one in a loop, and you do not get any cache misses… These numbers are just for <em>raw
+sppeed</em> and most of the time, instructions per cycle for such operations won’t be your bottleneck, but memory can be one.</p>
+
 <h2 id="staticany">static_any</h2>
 <p>This is why I started developing static_any. At the very beginning, I only implemented it for trivially copyable types, 
 as I was only using the container with this kind of objects. This super simple and fast container is in the same header 
