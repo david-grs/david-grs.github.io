@@ -28,7 +28,7 @@ So why was *Boost.Any* too slow in my case ? And why was I looking for a stack-b
 
 *Boost.Any* is very simple: it erases the type via inheritance, and the few required operations, which are querying the type
 and cloning the objects, are done via virtual methods. Here is a skeleton:
-{% gist david-grs/8f8f38b6b63216a97c5c boost_any_impl %}
+{% gist david-grs/8b727b6d2e71361ffa730df4004b449c boost_any_impl %}
 <br />
 My main issue regarding this implementation was not at all with the costs of calling virtual methods, but with
 the memory layout that this would imply to my structure.
