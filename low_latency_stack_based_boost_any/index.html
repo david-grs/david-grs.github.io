@@ -98,11 +98,11 @@ would fit in 16bytes. </p>
 
 <p>Disappointed, because <em>Boost.Any</em> does not offer the possibility to use a custom allocator. To be honest, that would 
 not have solved the story anyway, as <em>Boost.Any</em> does other things that slow down this container, 
-but that was enough to start thinking about a another — home-made — solution.</p>
+but that was enough to start thinking about another — home-made — solution.</p>
 
 <blockquote>
-  <h1 id="talk-is-cheap-show-me-the-code">Talk is cheap. Show me the code.</h1>
-  <p><a href="https://github.com/david-grs/static_any">static_any project on my github</a></p>
+  <p>Talk is cheap. Show me the code.<br />
+<a href="https://github.com/david-grs/static_any">static_any project on my github</a></p>
 </blockquote>
 
 <h2 id="boostany-implementation">Boost.Any implementation</h2>
@@ -130,6 +130,25 @@ My main issue regarding this implementation was not at all with the costs of cal
 the memory layout that this would imply to my structure.</p>
 
 <p>I knew that my stored types were small, and I wanted them on the same <strong>cache line</strong>.</p>
+
+<p>To be more concrete, with the following code: </p>
+<noscript><pre>  struct foo
+  {
+      int i;
+      long l;
+      boost::any a;
+  };
+  
+  foo f;
+  f.a = 1234;</pre></noscript>
+<script src="https://gist.github.com/david-grs/8b727b6d2e71361ffa730df4004b449c.js?file=mem_layout"> </script>
+
+<p><br />
+The variables <em>i</em> and <em>l</em> are next to each other in memory, but the integer <em>1234</em> will be somewhere else — due to
+the heap-based implementation of <em>Boost.Any</em> —, maybe even on another page.</p>
+
+<p>And of course, you get all the benefits when having these variables located in the same contiguous chunk of memory: better
+data-locality means less memory cache misses and a better prefetching.</p>
 
 <h2 id="staticany">static_any</h2>
 <p>This is why I started developing static_any. At the very beginning, I only implemented it for trivially copyable types, 

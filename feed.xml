@@ -6,8 +6,8 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Thu, 12 May 2016 22:41:57 +0200</pubDate>
-    <lastBuildDate>Thu, 12 May 2016 22:41:57 +0200</lastBuildDate>
+    <pubDate>Fri, 13 May 2016 00:01:41 +0200</pubDate>
+    <lastBuildDate>Fri, 13 May 2016 00:01:41 +0200</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
     
       <item>
@@ -23,11 +23,11 @@ would fit in 16bytes. &lt;/p&gt;
 
 &lt;p&gt;Disappointed, because &lt;em&gt;Boost.Any&lt;/em&gt; does not offer the possibility to use a custom allocator. To be honest, that would 
 not have solved the story anyway, as &lt;em&gt;Boost.Any&lt;/em&gt; does other things that slow down this container, 
-but that was enough to start thinking about a another — home-made — solution.&lt;/p&gt;
+but that was enough to start thinking about another — home-made — solution.&lt;/p&gt;
 
 &lt;blockquote&gt;
-  &lt;h1 id=&quot;talk-is-cheap-show-me-the-code&quot;&gt;Talk is cheap. Show me the code.&lt;/h1&gt;
-  &lt;p&gt;&lt;a href=&quot;https://github.com/david-grs/static_any&quot;&gt;static_any project on my github&lt;/a&gt;&lt;/p&gt;
+  &lt;p&gt;Talk is cheap. Show me the code.&lt;br /&gt;
+&lt;a href=&quot;https://github.com/david-grs/static_any&quot;&gt;static_any project on my github&lt;/a&gt;&lt;/p&gt;
 &lt;/blockquote&gt;
 
 &lt;h2 id=&quot;boostany-implementation&quot;&gt;Boost.Any implementation&lt;/h2&gt;
@@ -55,6 +55,25 @@ My main issue regarding this implementation was not at all with the costs of cal
 the memory layout that this would imply to my structure.&lt;/p&gt;
 
 &lt;p&gt;I knew that my stored types were small, and I wanted them on the same &lt;strong&gt;cache line&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;To be more concrete, with the following code: &lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;  struct foo
+  {
+      int i;
+      long l;
+      boost::any a;
+  };
+  
+  foo f;
+  f.a = 1234;&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/8b727b6d2e71361ffa730df4004b449c.js?file=mem_layout&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+The variables &lt;em&gt;i&lt;/em&gt; and &lt;em&gt;l&lt;/em&gt; are next to each other in memory, but the integer &lt;em&gt;1234&lt;/em&gt; will be somewhere else — due to
+the heap-based implementation of &lt;em&gt;Boost.Any&lt;/em&gt; —, maybe even on another page.&lt;/p&gt;
+
+&lt;p&gt;And of course, you get all the benefits when having these variables located in the same contiguous chunk of memory: better
+data-locality means less memory cache misses and a better prefetching.&lt;/p&gt;
 
 &lt;h2 id=&quot;staticany&quot;&gt;static_any&lt;/h2&gt;
 &lt;p&gt;This is why I started developing static_any. At the very beginning, I only implemented it for trivially copyable types, 
