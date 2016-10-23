@@ -99,27 +99,12 @@ and clear… if correctly indented!</p>
   <p>You have a set of unique integers and do mainly two operations on it: </p>
 
   <ul>
-    <li><em>adding a integer</em></li>
+    <li><em>adding an integer</em></li>
     <li><em>iterating the entire set of in ascending and descending order</em></li>
   </ul>
 </blockquote>
 
-<p>One way to achieve that is to maintain two <em>std::set</em> , one using <em>std::greater</em>, the other one <em>std::less</em>. However, there are few problems with this approach:</p>
-
-<ol>
-  <li>it is <em>error prone</em>: each operation has to be done on the two sets, and if you forget you will have a bad time</li>
-  <li>the <em>time complexity</em> is worse on insertion as you have the value twice — and even if the object is small it will be slower due to the memory allocations of the container</li>
-  <li>the <em>spatial complexity</em> will be worse</li>
-  <li>it can be <em>complicated</em> if instead of storing twice the value you decide to store a pointer, reference or iterator in one of the two containers: they can be invalidated depending on the container and the operations performed on it</li>
-  <li>it is not very <em>elegant</em> from the code perspective</li>
-  <li>if the constructor, destructor, etc are not declared <em>nothrow</em>, it will be even more fun!</li>
-</ol>
-
-<p>To sum up, yes, you can isolate the two containers in a separate <em>class</em>, wrap all the methods, deal with the exceptions to 
-rollback the operation if something throws and code the unit tests. Good luck, though! And it will be slower than Boost.MultiIndex,
-and there will be another few hundreds of lines of code to maintain. </p>
-
-<p>Now, the right way to do it:</p>
+<p>This is achievable quite easily with <em>boost::multi_multi_container</em>:</p>
 
 <noscript><pre>struct asc {};
 struct desc{};
@@ -142,7 +127,7 @@ boost::multi_index_container&lt;
 <script src="https://gist.github.com/david-grs/7519f9b37941626a673926e498317305.js?file=mic_ints_asc_desc.cpp"> </script>
 
 <p><br />
-The “hard” part done, the usage of the container itself is quite trivial. Actually, most of the operations are identical to the ones you can find on a standard container. The only
+The “hard” part done, the usage of the container itself is trivial. Actually, most of the operations are identical to the ones you can find on a standard container. The only
 difference is that you have to get a <em>view</em> on the container for some of the operations:</p>
 
 <noscript><pre>auto&amp;&amp; v = mic.get&lt;asc&gt;();
@@ -156,14 +141,31 @@ for (auto&amp;&amp; i : v) ...</pre></noscript>
 
 <p><br /></p>
 
+<h2 id="the-unfortunate-alternative">The unfortunate alternative</h2>
+<p>The alternative and unfortunately most common way to achieve the same problem is to maintain two <em>std::set</em>, one using <em>std::greater</em>, the other one <em>std::less</em>. 
+However, there are few problems with this approach:</p>
+
+<ol>
+  <li>it is <em>error prone</em>: each operation has to be done on the two sets, and if you forget you will have a bad time</li>
+  <li>the <em>time complexity</em> is worse on insertion as you have the value twice — and even if the object is small it will be slower due to the memory allocations of the container</li>
+  <li>the <em>spatial complexity</em> will be worse</li>
+  <li>it can be <em>complicated</em> if instead of storing twice the value you decide to store a pointer, reference or iterator in one of the two containers: they can be invalidated depending on the container and the operations performed on it</li>
+  <li>it is not very <em>elegant</em> from the code perspective</li>
+  <li>if the constructor, destructor, etc are not declared <em>nothrow</em>, it will be even more fun!</li>
+</ol>
+
+<p>To sum up, yes, you can isolate the two containers in a separate <em>class</em>, wrap all the methods, deal with the exceptions to 
+rollback the operation if something throws and code the unit tests. Good luck, though! And it will be slower than Boost.MultiIndex,
+and there will be another few hundreds of lines of code to maintain. </p>
+
 <h2 id="performance">Performance</h2>
 <p>When we do C++, performance usually matters: how fast is this double-indexed <em>boost::multi_index_container</em> compared to the two <em>std::set</em>? </p>
 
 <p><img src="/assets/images/speed_boost_multi_index_std_set.jpg" alt="Speed comparisons between boost::multi_index_container with two ordered indexes and two std::set, time in ms, measured on 1e6 iterations." /></p>
 
-<p>As we thought, the <em>multi_index_container</em> is much faster on insertion (and removal): we pay the logarithmic complexity of the red-black tree twice, but also a second memory allocation. I would expect
-this difference to increase with the size of the value stored. When doing a lookup or walking in ascending or descending order, performance are almost the same — as they are done only on <em>one</em> std::set
-and not the two. </p>
+<p>As we thought, the <em>multi_index_container</em> is much faster on insertion (and removal). With the <em>std::set</em>, we pay the logarithmic complexity of the binary search tree twice, but also a second 
+memory allocation. I would expect this difference to increase with the size of the value stored. When doing a lookup or walking in ascending or descending order, performance are almost 
+the same — as they are done only on <em>one</em> std::set and not the two. </p>
 
 <blockquote>
   <p>The entire code of this benchmark is available on <a href="https://github.com/david-grs/boost_multi_index_container/blob/master/integers.cc">my github</a> </p>
@@ -193,12 +195,13 @@ and not the two. </p>
 <script src="https://gist.github.com/david-grs/7519f9b37941626a673926e498317305.js?file=mic_ints_asc_desc_hashed.cpp"> </script>
 
 <p><br />
-… and the lookup is now 10times faster, as expected. Again, if we want to have the same advantage by adding a <em>std::unorered_set</em>, we pay this time during insertion and removal (plus the complexity
-of the code that manages this additional container).</p>
+… and the lookup is now 10times faster. What is almost free with Boost.MultiIndex — adding an index — has definitely a cost in our alternative solution: if we add a <em>std::unorered_set</em>,
+the time of insertion and removal grows significantly (and the complexity of the code that manages this additional container too).</p>
 
 <p><img src="/assets/images/speed_boost_multi_index_std_set_and_unordered_set.jpg" alt="Speed comparisons between boost::multi_index_container with three indexes (two ordered, one hashed) and two std::set plus std::unordered_set, time in ms, measured on 1e6 iterations." /></p>
 
 <h2 id="implementation">Implementation</h2>
+
 
         </section>
         <footer class="post-footer">
