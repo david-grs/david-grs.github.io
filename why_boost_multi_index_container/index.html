@@ -135,7 +135,7 @@ boost::multi_index_container&lt;
     ordered_unique&lt;      // second view
       tag&lt;desc&gt;,         // its tag
       identity&lt;int&gt;,     // again, the key is the entire object
-      std::greater&lt;int&gt;  // descnding order
+      std::greater&lt;int&gt;  // descending order
     &gt;
   &gt;
 &gt; mic;</pre></noscript>
@@ -198,9 +198,7 @@ of the code that manages this additional container).</p>
 
 <p><img src="/assets/images/speed_boost_multi_index_std_set_and_unordered_set.jpg" alt="Speed comparisons between boost::multi_index_container with three indexes (two ordered, one hashed) and two std::set plus std::unordered_set, time in ms, measured on 1e6 iterations." /></p>
 
-
 <h2 id="implementation">Implementation</h2>
-
 
         </section>
         <footer class="post-footer">
