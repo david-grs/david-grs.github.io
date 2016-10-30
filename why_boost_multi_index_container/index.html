@@ -100,49 +100,56 @@ and clear… if correctly indented!</p>
 
   <ul>
     <li><em>adding an integer</em></li>
-    <li><em>iterating the entire set of in ascending and descending order</em></li>
+    <li><em>iterating over the set in ascending and descending order</em></li>
   </ul>
 </blockquote>
 
-<p>This is achievable quite easily with <em>boost::multi_multi_container</em>:</p>
+<p>This is achievable quite easily with <em>boost::multi_index_container</em>:</p>
 
-<noscript><pre>struct asc {};
+<noscript><pre>namespace tags
+{
+struct asc {};
 struct desc{};
+}
 
-boost::multi_index_container&lt;
+using sorted_ints = boost::multi_index_container&lt;
   int,                   // the stored object
   indexed_by&lt;
     ordered_unique&lt;      // first view
-      tag&lt;asc&gt;,          // tag used to access the view
+      tag&lt;tags::asc&gt;,    // tag used to access the view
       identity&lt;int&gt;,     // which part of the object is the key? the entire object.
       std::less&lt;int&gt;     // ascending order
     &gt;,
     ordered_unique&lt;      // second view
-      tag&lt;desc&gt;,         // its tag
+      tag&lt;tags::desc&gt;,   // its tag
       identity&lt;int&gt;,     // again, the key is the entire object
       std::greater&lt;int&gt;  // descending order
     &gt;
   &gt;
-&gt; mic;</pre></noscript>
+&gt;;</pre></noscript>
 <script src="https://gist.github.com/david-grs/7519f9b37941626a673926e498317305.js?file=mic_ints_asc_desc.cpp"> </script>
 
 <p><br />
 The “hard” part done, the usage of the container itself is trivial. Actually, most of the operations are identical to the ones you can find on a standard container. The only
 difference is that you have to get a <em>view</em> on the container for some of the operations:</p>
 
-<noscript><pre>auto&amp;&amp; v = mic.get&lt;asc&gt;();
-v.insert(4);
+<noscript><pre>sorted_ints m;
 
-auto it = v.begin();
-v.erase(it);
+// insert() and erase() can be performed directly on the container
+m.insert(2);
+m.insert(3);
 
-for (auto&amp;&amp; i : v) ...</pre></noscript>
+auto&amp;&amp; v = m.get&lt;tags::asc&gt;();
+auto it = v.find(3);
+
+m.erase(it);
+
+for (auto&amp;&amp; i : v)
+  std::cout &lt;&lt; i &lt;&lt; std::endl;</pre></noscript>
 <script src="https://gist.github.com/david-grs/7519f9b37941626a673926e498317305.js?file=mic_view.cpp"> </script>
 
-<p><br /></p>
-
 <h2 id="the-unfortunate-alternative">The unfortunate alternative</h2>
-<p>The alternative and unfortunately most common way to achieve the same problem is to maintain two <em>std::set</em>, one using <em>std::greater</em>, the other one <em>std::less</em>. 
+<p>The alternative and unfortunately most common way to solve this problem is to maintain two <em>std::set</em>, one using <em>std::greater</em>, the other one <em>std::less</em>. 
 However, there are few problems with this approach:</p>
 
 <ol>
@@ -163,9 +170,10 @@ and there will be another few hundreds of lines of code to maintain. </p>
 
 <p><img src="/assets/images/speed_boost_multi_index_std_set.jpg" alt="Speed comparisons between boost::multi_index_container with two ordered indexes and two std::set, time in ms, measured on 1e6 iterations." /></p>
 
-<p>As we thought, the <em>multi_index_container</em> is much faster on insertion (and removal). With the <em>std::set</em>, we pay the logarithmic complexity of the binary search tree twice, but also a second 
-memory allocation. I would expect this difference to increase with the size of the value stored. When doing a lookup or walking in ascending or descending order, performance are almost 
-the same — as they are done only on <em>one</em> std::set and not the two. </p>
+<p>As we thought, the <em>multi_index_container</em> is much faster on insertion (and removal). The solution using two <em>std::set</em>’s forces us to duplicate all the operations that modify the container: on insertion
+and deletion, both sets need to be updated. This is especially bad as these operations involve memory allocations ; you can then expect this time difference to increase with the size of the value stored.</p>
+
+<p>When doing a lookup or walking in ascending or descending order, performance are almost the same — as they are done only on <em>one</em> std::set and not the two. </p>
 
 <blockquote>
   <p>The entire code of this benchmark is available on <a href="https://github.com/david-grs/boost_multi_index_container/blob/master/integers.cc">my github</a> </p>
@@ -173,7 +181,7 @@ the same — as they are done only on <em>one</em> std::set and not the two. </p
 
 <p>We see that the lookup is slightly slower, probably due to the overhead added by the multiple indexes. What can we do about that? Well, adding a third index, not <em>ordered</em> this time, but <em>hashed</em>! </p>
 
-<noscript><pre>boost::multi_index_container&lt;
+<noscript><pre>using sorted_ints = boost::multi_index_container&lt;
   int,
   indexed_by&lt;
     ordered_unique&lt;
@@ -191,7 +199,7 @@ the same — as they are done only on <em>one</em> std::set and not the two. </p
       identity&lt;int&gt;          // we hash the entire value
     &gt;                        // no need to specify std::hash&lt;int&gt; here (it is the default parameter) 
   &gt;
-&gt; mic;</pre></noscript>
+&gt;;</pre></noscript>
 <script src="https://gist.github.com/david-grs/7519f9b37941626a673926e498317305.js?file=mic_ints_asc_desc_hashed.cpp"> </script>
 
 <p><br />
@@ -201,6 +209,67 @@ the time of insertion and removal grows significantly (and the complexity of the
 <p><img src="/assets/images/speed_boost_multi_index_std_set_and_unordered_set.jpg" alt="Speed comparisons between boost::multi_index_container with three indexes (two ordered, one hashed) and two std::set plus std::unordered_set, time in ms, measured on 1e6 iterations." /></p>
 
 <h2 id="implementation">Implementation</h2>
+<p>Behind the scene, <em>boost::multi_index_container</em> is using a system of headers in order to do its job. Each node consists in the stored object, plus a sequence of headers, depending on the indexes
+that are used.</p>
+
+<p>There is a specific header for each index type.</p>
+
+<h3 id="ordered">Ordered</h3>
+<p>The ordered index is implemented as a red-black tree, thus the header is composed by 3 pointers: one to the parent and the two children pointers. The interesting point here is that the color of the node 
+is — on most platforms — encoded in the LSB of the parent pointer, resulting in a header of 24 bytes instead of 32 bytes (on a 64-bit systems).</p>
+
+<p>As <em>std::map</em> does not perform such space optimization, this can explain the result we got in the previous benchmark, where the lookup was faster on  <em>boost::multi_index_container</em> than <em>std::set</em>.</p>
+
+<h3 id="unordered">Unordered</h3>
+<p>The implementation of the hash map requires two pointers for the bucket management.</p>
+
+<p>Again, <em>std::unordered_map</em> takes more space (3 pointers on GCC 6.2, x86-64), which can explain why the lookup was ~20% slower.</p>
+
+<h3 id="sequenced">Sequenced</h3>
+<p>The sequenced index is implemented as a double-linked list: the header is composed by 2 pointers, one pointing to the next node, the other one to the previous node.</p>
+
+<h3 id="random-access">Random access</h3>
+<p>The random access index is implemented with an array of pointers to the nodes. In the node itself, the header is only composed by one pointer, which points back to its corresponding element in the main array of pointers.</p>
+
+<h3 id="summary">Summary</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>index type</th>
+      <th>associated header           </th>
+      <th>size on 64-bit systems</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ordered</td>
+      <td>3 pointers</td>
+      <td>24 bytes</td>
+    </tr>
+    <tr>
+      <td>unordered (hashed)            </td>
+      <td>2 pointers</td>
+      <td>16 bytes</td>
+    </tr>
+    <tr>
+      <td>sequenced</td>
+      <td>2 pointers</td>
+      <td>16 bytes</td>
+    </tr>
+    <tr>
+      <td>random</td>
+      <td>1 pointer</td>
+      <td>8 bytes</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><br />
+Then, in the previous double-ordered and hashed container, the overhead was <em>24+24+16=64 bytes</em>. If we take <em>sizeof(int) == 4 bytes</em>, each value is taking in memory <em>68 bytes</em>.</p>
+
+<p>In the other solution, each instance of <em>std::set</em> and <em>std::unordered_set</em> is using <em>40 bytes</em> (GCC 6.2, x86-64 Linux), resulting in a usage of <em>120 bytes</em> per value.</p>
+
 
         </section>
         <footer class="post-footer">
