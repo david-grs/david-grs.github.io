@@ -114,3 +114,4 @@ In the other solution, each instance of *std::set* and *std::unordered_set* is u
 
 That's all for now! In a second part I will explain why Boost.MultiIndex can help you, even if you don't use multiple indexes.
 
+
