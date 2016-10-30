@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Why you should use Boost.MultiIndex... (Part I)"
+title:  "Why you should use Boost.MultiIndex (Part I)"
 author: David Gross
 date:   2016-10-30 22:04
 ---
