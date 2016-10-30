@@ -16,6 +16,7 @@ name: 'David Gross'
 author: 'David Gross'
 email: 'gdavid.devel@gmail.com'
 author_image: "/assets/images/author.jpg"
+timezone: Europe/Paris
 
 paginate:	5
 
