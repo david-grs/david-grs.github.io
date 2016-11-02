@@ -6,8 +6,8 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Wed, 02 Nov 2016 21:44:15 +0100</pubDate>
-    <lastBuildDate>Wed, 02 Nov 2016 21:44:15 +0100</lastBuildDate>
+    <pubDate>Wed, 02 Nov 2016 21:47:54 +0100</pubDate>
+    <lastBuildDate>Wed, 02 Nov 2016 21:47:54 +0100</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
     
       <item>
@@ -198,7 +198,7 @@ Then, in the previous double-ordered and hashed container, the overhead was &lt;
 &lt;p&gt;That’s all for now! In a second part I will explain why Boost.MultiIndex can help you even if you don’t use multiple indexes.&lt;/p&gt;
 
 </description>
-        <pubDate>Sun, 30 Oct 2016 22:04:00 +0100</pubDate>
+        <pubDate>Wed, 02 Nov 2016 21:47:00 +0100</pubDate>
         <link>http://david-grs.github.io/why_boost_multi_index_container-part1</link>
         <guid isPermaLink="true">http://david-grs.github.io/why_boost_multi_index_container-part1</guid>
         
