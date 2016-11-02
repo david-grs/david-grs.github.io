@@ -2,7 +2,7 @@
 layout: post
 title:  "Why you should use Boost.MultiIndex (Part I)"
 author: David Gross
-date:   2016-10-30 22:04
+date:   2016-11-02 21:47
 ---
 
 Although Boost.MultiIndex is a pretty old library &mdash; introduced in Boost 1.32, released in 2004 &mdash; I found it rather unsung and underestimated
