@@ -6,9 +6,204 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Fri, 13 May 2016 00:43:41 +0200</pubDate>
-    <lastBuildDate>Fri, 13 May 2016 00:43:41 +0200</lastBuildDate>
+    <pubDate>Wed, 02 Nov 2016 21:44:15 +0100</pubDate>
+    <lastBuildDate>Wed, 02 Nov 2016 21:44:15 +0100</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
+    
+      <item>
+        <title>Why you should use Boost.MultiIndex (Part I)</title>
+        <description>&lt;p&gt;Although Boost.MultiIndex is a pretty old library — introduced in Boost 1.32, released in 2004 — I found it rather unsung and underestimated
+across the C++ community in comparison to other non-standard containers. &lt;/p&gt;
+
+&lt;p&gt;In this article, split into multiple parts, I will highlight all the benefits you can get using &lt;em&gt;boost::multi_index_container&lt;/em&gt; instead of the standard 
+containers: faster, cleaner and simpler code.&lt;/p&gt;
+
+&lt;h2 id=&quot;multiple-views&quot;&gt;Multiple views&lt;/h2&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;You have a set of unique integers and do mainly two operations on it: &lt;/p&gt;
+
+  &lt;ul&gt;
+    &lt;li&gt;&lt;em&gt;adding an integer&lt;/em&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;em&gt;iterating over the set in ascending and descending order&lt;/em&gt;&lt;/li&gt;
+  &lt;/ul&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;This is achievable quite easily with &lt;em&gt;boost::multi_index_container&lt;/em&gt;:&lt;/p&gt;
+
+&lt;noscript&gt;&lt;pre&gt;namespace tags
+{
+struct asc {};
+struct desc{};
+}
+
+using sorted_ints = boost::multi_index_container&amp;lt;
+  int,                   // the stored object
+  indexed_by&amp;lt;
+    ordered_unique&amp;lt;      // first view
+      tag&amp;lt;tags::asc&amp;gt;,    // tag used to access the view
+      identity&amp;lt;int&amp;gt;,     // which part of the object is the key? the entire object.
+      std::less&amp;lt;int&amp;gt;     // ascending order
+    &amp;gt;,
+    ordered_unique&amp;lt;      // second view
+      tag&amp;lt;tags::desc&amp;gt;,   // its tag
+      identity&amp;lt;int&amp;gt;,     // again, the key is the entire object
+      std::greater&amp;lt;int&amp;gt;  // descending order
+    &amp;gt;
+  &amp;gt;
+&amp;gt;;&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/7519f9b37941626a673926e498317305.js?file=mic_ints_asc_desc.cpp&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+The “hard” part done, the usage of the container itself is trivial. Actually, most of the operations are identical to the ones you can find on a standard container. The only
+difference is that you have to get a &lt;em&gt;view&lt;/em&gt; on the container for some of the operations:&lt;/p&gt;
+
+&lt;noscript&gt;&lt;pre&gt;sorted_ints m;
+
+// insert() and erase() can be performed directly on the container
+m.insert(2);
+m.insert(3);
+
+auto&amp;amp;&amp;amp; v = m.get&amp;lt;tags::asc&amp;gt;();
+auto it = v.find(3);
+
+m.erase(it);
+
+for (auto&amp;amp;&amp;amp; i : v)
+  std::cout &amp;lt;&amp;lt; i &amp;lt;&amp;lt; std::endl;&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/7519f9b37941626a673926e498317305.js?file=mic_view.cpp&quot;&gt; &lt;/script&gt;
+
+&lt;h2 id=&quot;the-unfortunate-alternative&quot;&gt;The unfortunate alternative&lt;/h2&gt;
+&lt;p&gt;The alternative and unfortunately most common way to solve this problem is to maintain two &lt;em&gt;std::set&lt;/em&gt;, one using &lt;em&gt;std::greater&lt;/em&gt;, the other one &lt;em&gt;std::less&lt;/em&gt;. 
+However, there are few problems with this approach:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;it is &lt;em&gt;error prone&lt;/em&gt;: each operation has to be done on the two sets, and if you forget you will have a bad time&lt;/li&gt;
+  &lt;li&gt;the &lt;em&gt;time efficiency&lt;/em&gt; is worse on insertion as you have the value twice — and even if the object is small it will be slower due to the memory allocations of the container&lt;/li&gt;
+  &lt;li&gt;the &lt;em&gt;spatial efficiency&lt;/em&gt; will be worse&lt;/li&gt;
+  &lt;li&gt;it can be &lt;em&gt;complicated&lt;/em&gt; if instead of storing twice the value you decide to store a pointer, reference or iterator in one of the two containers: they can be invalidated depending on the container and the operations performed on it&lt;/li&gt;
+  &lt;li&gt;it is not very &lt;em&gt;elegant&lt;/em&gt; from the code perspective&lt;/li&gt;
+  &lt;li&gt;if the constructor can throw, it will be even more fun, as you will have to handle exceptions properly and erase the previously inserted values&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;To sum up, yes, you can isolate the two containers in a separate &lt;em&gt;class&lt;/em&gt;, wrap all the methods, deal with the exceptions to 
+rollback the operation if something throws and code the unit tests. Good luck, though! And it will be slower than Boost.MultiIndex,
+and there will be another few hundreds of lines of code to maintain. &lt;/p&gt;
+
+&lt;h2 id=&quot;performance&quot;&gt;Performance&lt;/h2&gt;
+&lt;p&gt;When we do C++, performance usually matters: how fast is this double-indexed &lt;em&gt;boost::multi_index_container&lt;/em&gt; compared to the two &lt;em&gt;std::set&lt;/em&gt;? &lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/speed_boost_multi_index_std_set.jpg&quot; alt=&quot;Speed comparisons between boost::multi_index_container with two ordered indexes and two std::set, time in ms, measured on 1e6 iterations.&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As we thought, the &lt;em&gt;multi_index_container&lt;/em&gt; is much faster on insertion (and removal). The solution using two &lt;em&gt;std::set&lt;/em&gt;’s forces us to duplicate all the operations that modify the container: on insertion
+and deletion, both sets need to be updated. This is especially bad as these operations involve memory allocations ; you can then expect this time difference to increase with the size of the value stored.&lt;/p&gt;
+
+&lt;p&gt;When doing a lookup or walking in ascending or descending order, performance are almost the same — as they are done only on &lt;em&gt;one&lt;/em&gt; std::set and not the two. &lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;The entire code of this benchmark is available on &lt;a href=&quot;https://github.com/david-grs/boost_multi_index_container/blob/master/integers.cc&quot;&gt;my github&lt;/a&gt; &lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;We see that the lookup is slightly slower, probably due to the overhead added by the multiple indexes. What can we do about that? Well, adding a third index, not &lt;em&gt;ordered&lt;/em&gt; this time, but &lt;em&gt;hashed&lt;/em&gt;! &lt;/p&gt;
+
+&lt;noscript&gt;&lt;pre&gt;using sorted_ints = boost::multi_index_container&amp;lt;
+  int,
+  indexed_by&amp;lt;
+    ordered_unique&amp;lt;
+      tag&amp;lt;tags::asc&amp;gt;,
+      identity&amp;lt;int&amp;gt;,
+      std::less&amp;lt;int&amp;gt;
+    &amp;gt;,
+    ordered_unique&amp;lt;
+      tag&amp;lt;tags::desc&amp;gt;,
+      identity&amp;lt;int&amp;gt;,
+      std::greater&amp;lt;int&amp;gt;
+    &amp;gt;,
+    hashed_unique&amp;lt;           // third view: unordered (hashed)
+      tag&amp;lt;tags::unordered&amp;gt;,  // its tag
+      identity&amp;lt;int&amp;gt;          // we hash the entire value
+    &amp;gt;                        // no need to specify std::hash&amp;lt;int&amp;gt; here (it is the default parameter) 
+  &amp;gt;
+&amp;gt;;&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/7519f9b37941626a673926e498317305.js?file=mic_ints_asc_desc_hashed.cpp&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+… and the lookup is now 10times faster. What is almost free with Boost.MultiIndex — adding an index — has definitely a cost in our alternative solution: if we add a &lt;em&gt;std::unorered_set&lt;/em&gt;,
+the time of insertion and removal grows significantly (and the complexity of the code that manages this additional container too).&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/speed_boost_multi_index_std_set_and_unordered_set.jpg&quot; alt=&quot;Speed comparisons between boost::multi_index_container with three indexes (two ordered, one hashed) and two std::set plus std::unordered_set, time in ms, measured on 1e6 iterations.&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;implementation&quot;&gt;Implementation&lt;/h2&gt;
+&lt;p&gt;Behind the scene, &lt;em&gt;boost::multi_index_container&lt;/em&gt; is using a system of headers in order to do its job. Each node consists in the stored object, plus a sequence of headers, depending on the indexes
+that are used.&lt;/p&gt;
+
+&lt;p&gt;There is a specific header for each index type.&lt;/p&gt;
+
+&lt;h3 id=&quot;ordered&quot;&gt;Ordered&lt;/h3&gt;
+&lt;p&gt;The ordered index is implemented as a red-black tree, thus the header is composed by 3 pointers: one to the parent and the two children pointers. An interesting point here is that the color of the node 
+is — on most platforms — encoded in the LSB of the parent pointer, resulting in a header of 24 bytes instead of 32 bytes (on a 64-bit systems).&lt;/p&gt;
+
+&lt;p&gt;As none of the &lt;em&gt;std::map&lt;/em&gt; implementations I checked — libc++ and libstdc++ trunk (at the time of writing…) — perform such space optimization, this might explain the result we got in the previous 
+benchmark, where the lookup was faster on  &lt;em&gt;boost::multi_index_container&lt;/em&gt; than &lt;em&gt;std::set&lt;/em&gt;. I actually don’t know &lt;em&gt;why&lt;/em&gt; they don’t perform such optimization, if anybody knows, don’t hesitate to post a comment!&lt;/p&gt;
+
+&lt;h3 id=&quot;unordered&quot;&gt;Unordered&lt;/h3&gt;
+&lt;p&gt;The implementation of the hash map requires two pointers for the bucket management.&lt;/p&gt;
+
+&lt;p&gt;Again, &lt;em&gt;std::unordered_map&lt;/em&gt; (with GCC 6.2 on Linux x86-64) takes more space (3 pointers), which can explain why the lookup was ~20% slower. I didn’t dig into the code of &lt;em&gt;std::unordered_map&lt;/em&gt;, I only profiled its memory allocations.&lt;/p&gt;
+
+&lt;h3 id=&quot;sequenced&quot;&gt;Sequenced&lt;/h3&gt;
+&lt;p&gt;The sequenced index is implemented as a double-linked list: the header is composed by 2 pointers, one pointing to the next node, the other one to the previous node.&lt;/p&gt;
+
+&lt;h3 id=&quot;random-access&quot;&gt;Random access&lt;/h3&gt;
+&lt;p&gt;The random access index is implemented with an array of pointers to the nodes. In the node itself, the header is only composed by one pointer, which points back to its corresponding element in the main array of pointers.&lt;/p&gt;
+
+&lt;h3 id=&quot;summary&quot;&gt;Summary&lt;/h3&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;index type&lt;/th&gt;
+      &lt;th&gt;associated header           &lt;/th&gt;
+      &lt;th&gt;size on 64-bit systems&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;ordered&lt;/td&gt;
+      &lt;td&gt;3 pointers&lt;/td&gt;
+      &lt;td&gt;24 bytes&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;unordered (hashed)            &lt;/td&gt;
+      &lt;td&gt;2 pointers&lt;/td&gt;
+      &lt;td&gt;16 bytes&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;sequenced&lt;/td&gt;
+      &lt;td&gt;2 pointers&lt;/td&gt;
+      &lt;td&gt;16 bytes&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;random&lt;/td&gt;
+      &lt;td&gt;1 pointer&lt;/td&gt;
+      &lt;td&gt;8 bytes&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;&lt;br /&gt;
+Then, in the previous double-ordered and hashed container, the overhead was &lt;em&gt;24+24+16=64 bytes&lt;/em&gt;. If we take &lt;em&gt;sizeof(int) == 4 bytes&lt;/em&gt;, each node takes &lt;em&gt;68 bytes&lt;/em&gt; in memory.&lt;/p&gt;
+
+&lt;p&gt;In the other solution, each instance of &lt;em&gt;std::set&lt;/em&gt; and &lt;em&gt;std::unordered_set&lt;/em&gt; is using &lt;em&gt;40 bytes&lt;/em&gt; (GCC 6.2, Linux, x86-64), resulting in a usage of &lt;em&gt;120 bytes&lt;/em&gt; per node.&lt;/p&gt;
+
+&lt;p&gt;That’s all for now! In a second part I will explain why Boost.MultiIndex can help you even if you don’t use multiple indexes.&lt;/p&gt;
+
+</description>
+        <pubDate>Sun, 30 Oct 2016 22:04:00 +0100</pubDate>
+        <link>http://david-grs.github.io/why_boost_multi_index_container-part1</link>
+        <guid isPermaLink="true">http://david-grs.github.io/why_boost_multi_index_container-part1</guid>
+        
+        
+      </item>
     
       <item>
         <title>static_any: a low-latency stack-based Boost.Any</title>
