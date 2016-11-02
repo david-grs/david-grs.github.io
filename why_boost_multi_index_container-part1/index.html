@@ -132,18 +132,18 @@ using sorted_ints = boost::multi_index_container&lt;
 The “hard” part done, the usage of the container itself is trivial. Actually, most of the operations are identical to the ones you can find on a standard container. The only
 difference is that you have to get a <em>view</em> on the container for some of the operations:</p>
 
-<noscript><pre>sorted_ints m;
+<noscript><pre>sorted_ints mic;
 
 // insert() and erase() can be performed directly on the container
-m.insert(2);
-m.insert(3);
+mic.insert(2);
+mic.insert(3);
 
-auto&amp;&amp; v = m.get&lt;tags::asc&gt;();
-auto it = v.find(3);
+auto&amp;&amp; view = mic.get&lt;tags::asc&gt;();
+auto it = view.find(3);
 
-m.erase(it);
+mic.erase(it);
 
-for (auto&amp;&amp; i : v)
+for (auto&amp;&amp; i : view)
   std::cout &lt;&lt; i &lt;&lt; std::endl;</pre></noscript>
 <script src="https://gist.github.com/david-grs/7519f9b37941626a673926e498317305.js?file=mic_view.cpp"> </script>
 
@@ -208,7 +208,7 @@ the time of insertion and removal grows significantly (and the complexity of the
 <p><img src="/assets/images/speed_boost_multi_index_std_set_and_unordered_set.jpg" alt="Speed comparisons between boost::multi_index_container with three indexes (two ordered, one hashed) and two std::set plus std::unordered_set, time in ms, measured on 1e6 iterations." /></p>
 
 <h2 id="implementation">Implementation</h2>
-<p>Behind the scene, <em>boost::multi_index_container</em> is using a system of headers in order to do its job. Each node consists in the stored object, plus a sequence of headers, depending on the indexes
+<p>Behind the scene, <em>boost::multi_index_container</em> uses a system of headers in order to do its job. Each node consists in the stored object, plus a sequence of headers, depending on the indexes
 that are used.</p>
 
 <p>There is a specific header for each index type.</p>
@@ -217,7 +217,7 @@ that are used.</p>
 <p>The ordered index is implemented as a red-black tree, thus the header is composed by 3 pointers: one to the parent and the two children pointers. An interesting point here is that the color of the node 
 is — on most platforms — encoded in the LSB of the parent pointer, resulting in a header of 24 bytes instead of 32 bytes (on a 64-bit systems).</p>
 
-<p>As none of the <em>std::map</em> implementations I checked — libc++ and libstdc++ trunk (at the time of writing…) — perform such space optimization, this might explain the result we got in the previous 
+<p>As none of the <em>std::map</em> implementations I checked — libc++ and libstdc++ trunk (at the time of writing…) — performs such space optimization, this might explain the result we got in the previous 
 benchmark, where the lookup was faster on  <em>boost::multi_index_container</em> than <em>std::set</em>. I actually don’t know <em>why</em> they don’t perform such optimization, if anybody knows, don’t hesitate to post a comment!</p>
 
 <h3 id="unordered">Unordered</h3>
@@ -268,7 +268,7 @@ benchmark, where the lookup was faster on  <em>boost::multi_index_container</em>
 <p><br />
 Then, in the previous double-ordered and hashed container, the overhead was <em>24+24+16=64 bytes</em>. If we take <em>sizeof(int) == 4 bytes</em>, each node takes <em>68 bytes</em> in memory.</p>
 
-<p>In the other solution, each instance of <em>std::set</em> and <em>std::unordered_set</em> is using <em>40 bytes</em> (GCC 6.2, Linux, x86-64), resulting in a usage of <em>120 bytes</em> per node.</p>
+<p>In the other solution, each instance of <em>std::set</em> and <em>std::unordered_set</em> uses <em>40 bytes</em> (GCC 6.2, Linux, x86-64), resulting in a usage of <em>120 bytes</em> per node.</p>
 
 <p>That’s all for now! In a second part I will explain why Boost.MultiIndex can help you even if you don’t use multiple indexes.</p>
 
