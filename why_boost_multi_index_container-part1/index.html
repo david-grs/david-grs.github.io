@@ -88,13 +88,12 @@
           </div>
           <a name="topofpage"></a>
           <p>Although Boost.MultiIndex is a pretty old library — introduced in Boost 1.32, released in 2004 — I found it rather unsung and underestimated
-across the C++ community in comparison to other non-standard containers. One reason might be due to the declaration of <em>boost::multi_index_container</em><br />
-which might have discouraged more than a developer due to its long list of template parameters ; but as we will see later, it is actually very simple 
-and clear… if correctly indented!</p>
+across the C++ community in comparison to other non-standard containers. </p>
+
+<p>In this article, split into multiple parts, I will highlight all the benefits you can get using <em>boost::multi_index_container</em> instead of the standard 
+containers: faster, cleaner and simpler code.</p>
 
 <h2 id="multiple-views">Multiple views</h2>
-<p>In a situation involving multiple views on the same data, there is no doubt: Boost.MultiIndex is what you want and what you should use. Let’s take a quick example.</p>
-
 <blockquote>
   <p>You have a set of unique integers and do mainly two operations on it: </p>
 
@@ -154,11 +153,11 @@ However, there are few problems with this approach:</p>
 
 <ol>
   <li>it is <em>error prone</em>: each operation has to be done on the two sets, and if you forget you will have a bad time</li>
-  <li>the <em>time complexity</em> is worse on insertion as you have the value twice — and even if the object is small it will be slower due to the memory allocations of the container</li>
-  <li>the <em>spatial complexity</em> will be worse</li>
+  <li>the <em>time efficiency</em> is worse on insertion as you have the value twice — and even if the object is small it will be slower due to the memory allocations of the container</li>
+  <li>the <em>spatial efficiency</em> will be worse</li>
   <li>it can be <em>complicated</em> if instead of storing twice the value you decide to store a pointer, reference or iterator in one of the two containers: they can be invalidated depending on the container and the operations performed on it</li>
   <li>it is not very <em>elegant</em> from the code perspective</li>
-  <li>if the constructor, destructor, etc are not declared <em>nothrow</em>, it will be even more fun!</li>
+  <li>if the constructor can throw, it will be even more fun, as you will have to handle exceptions properly and erase the previously inserted values</li>
 </ol>
 
 <p>To sum up, yes, you can isolate the two containers in a separate <em>class</em>, wrap all the methods, deal with the exceptions to 
@@ -215,15 +214,16 @@ that are used.</p>
 <p>There is a specific header for each index type.</p>
 
 <h3 id="ordered">Ordered</h3>
-<p>The ordered index is implemented as a red-black tree, thus the header is composed by 3 pointers: one to the parent and the two children pointers. The interesting point here is that the color of the node 
+<p>The ordered index is implemented as a red-black tree, thus the header is composed by 3 pointers: one to the parent and the two children pointers. An interesting point here is that the color of the node 
 is — on most platforms — encoded in the LSB of the parent pointer, resulting in a header of 24 bytes instead of 32 bytes (on a 64-bit systems).</p>
 
-<p>As <em>std::map</em> does not perform such space optimization, this can explain the result we got in the previous benchmark, where the lookup was faster on  <em>boost::multi_index_container</em> than <em>std::set</em>.</p>
+<p>As none of the <em>std::map</em> implementations I checked — libc++ and libstdc++ trunk (at the time of writing…) — perform such space optimization, this might explain the result we got in the previous 
+benchmark, where the lookup was faster on  <em>boost::multi_index_container</em> than <em>std::set</em>. I actually don’t know <em>why</em> they don’t perform such optimization, if anybody knows, don’t hesitate to post a comment!</p>
 
 <h3 id="unordered">Unordered</h3>
 <p>The implementation of the hash map requires two pointers for the bucket management.</p>
 
-<p>Again, <em>std::unordered_map</em> takes more space (3 pointers on GCC 6.2, x86-64), which can explain why the lookup was ~20% slower.</p>
+<p>Again, <em>std::unordered_map</em> (with GCC 6.2 on Linux x86-64) takes more space (3 pointers), which can explain why the lookup was ~20% slower. I didn’t dig into the code of <em>std::unordered_map</em>, I only profiled its memory allocations.</p>
 
 <h3 id="sequenced">Sequenced</h3>
 <p>The sequenced index is implemented as a double-linked list: the header is composed by 2 pointers, one pointing to the next node, the other one to the previous node.</p>
@@ -266,11 +266,11 @@ is — on most platforms — encoded in the LSB of the parent pointer, resulting
 </table>
 
 <p><br />
-Then, in the previous double-ordered and hashed container, the overhead was <em>24+24+16=64 bytes</em>. If we take <em>sizeof(int) == 4 bytes</em>, each value is taking in memory <em>68 bytes</em>.</p>
+Then, in the previous double-ordered and hashed container, the overhead was <em>24+24+16=64 bytes</em>. If we take <em>sizeof(int) == 4 bytes</em>, each node takes <em>68 bytes</em> in memory.</p>
 
-<p>In the other solution, each instance of <em>std::set</em> and <em>std::unordered_set</em> is using <em>40 bytes</em> (GCC 6.2, x86-64 Linux), resulting in a usage of <em>120 bytes</em> per value.</p>
+<p>In the other solution, each instance of <em>std::set</em> and <em>std::unordered_set</em> is using <em>40 bytes</em> (GCC 6.2, Linux, x86-64), resulting in a usage of <em>120 bytes</em> per node.</p>
 
-<p>That’s all for now! In a second part I will explain why Boost.MultiIndex can help you, even if you don’t use multiple indexes.</p>
+<p>That’s all for now! In a second part I will explain why Boost.MultiIndex can help you even if you don’t use multiple indexes.</p>
 
 
         </section>
