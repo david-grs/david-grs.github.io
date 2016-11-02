@@ -71,7 +71,7 @@ the time of insertion and removal grows significantly (and the complexity of the
 
 Implementation
 --------------
-Behind the scene, *boost::multi\_index\_container* is using a system of headers in order to do its job. Each node consists in the stored object, plus a sequence of headers, depending on the indexes
+Behind the scene, *boost::multi\_index\_container* uses a system of headers in order to do its job. Each node consists in the stored object, plus a sequence of headers, depending on the indexes
 that are used.
 
 There is a specific header for each index type.
@@ -80,7 +80,7 @@ There is a specific header for each index type.
 The ordered index is implemented as a red-black tree, thus the header is composed by 3 pointers: one to the parent and the two children pointers. An interesting point here is that the color of the node 
 is &mdash; on most platforms &mdash; encoded in the LSB of the parent pointer, resulting in a header of 24 bytes instead of 32 bytes (on a 64-bit systems).
 
-As none of the *std::map* implementations I checked &mdash; libc++ and libstdc++ trunk (at the time of writing...) &mdash; perform such space optimization, this might explain the result we got in the previous 
+As none of the *std::map* implementations I checked &mdash; libc++ and libstdc++ trunk (at the time of writing...) &mdash; performs such space optimization, this might explain the result we got in the previous 
 benchmark, where the lookup was faster on  *boost::multi\_index\_container* than *std::set*. I actually don't know *why* they don't perform such optimization, if anybody knows, don't hesitate to post a comment!
 
 
@@ -110,7 +110,7 @@ random                   | 1 pointer | 8 bytes
 <br />
 Then, in the previous double-ordered and hashed container, the overhead was *24+24+16=64 bytes*. If we take *sizeof(int) == 4 bytes*, each node takes *68 bytes* in memory.
 
-In the other solution, each instance of *std::set* and *std::unordered_set* is using *40 bytes* (GCC 6.2, Linux, x86-64), resulting in a usage of *120 bytes* per node.
+In the other solution, each instance of *std::set* and *std::unordered_set* uses *40 bytes* (GCC 6.2, Linux, x86-64), resulting in a usage of *120 bytes* per node.
 
 That's all for now! In a second part I will explain why Boost.MultiIndex can help you even if you don't use multiple indexes.
 
