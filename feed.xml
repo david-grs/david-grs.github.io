@@ -6,8 +6,8 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Thu, 03 Nov 2016 21:21:27 +0100</pubDate>
-    <lastBuildDate>Thu, 03 Nov 2016 21:21:27 +0100</lastBuildDate>
+    <pubDate>Thu, 03 Nov 2016 21:28:01 +0100</pubDate>
+    <lastBuildDate>Thu, 03 Nov 2016 21:28:01 +0100</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
     
       <item>
@@ -140,7 +140,7 @@ and deletion, both sets need to be updated. This is especially bad as these oper
 &lt;script src=&quot;https://gist.github.com/david-grs/7519f9b37941626a673926e498317305.js?file=mic_ints_asc_desc_hashed.cpp&quot;&gt; &lt;/script&gt;
 
 &lt;p&gt;&lt;br /&gt;
-… and the lookup is now 10times faster. What is almost free with Boost.MultiIndex — adding an index — has definitely a cost in our alternative solution: if we add a &lt;em&gt;std::unorered_set&lt;/em&gt;,
+… and the lookup is now ~5times faster. What is almost free with Boost.MultiIndex — adding an index — has definitely a cost in our alternative solution: if we add a &lt;em&gt;std::unorered_set&lt;/em&gt;,
 the time of insertion and removal grows significantly (and the complexity of the code that manages this additional container too).&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/images/speed_boost_multi_index_std_set_and_unordered_set.jpg&quot; alt=&quot;Speed comparisons between boost::multi_index_container with three indexes (two ordered, one hashed) and two std::set plus std::unordered_set, time in ms, measured on 1e6 iterations.&quot; /&gt;&lt;/p&gt;

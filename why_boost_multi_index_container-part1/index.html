@@ -215,7 +215,7 @@ and deletion, both sets need to be updated. This is especially bad as these oper
 <script src="https://gist.github.com/david-grs/7519f9b37941626a673926e498317305.js?file=mic_ints_asc_desc_hashed.cpp"> </script>
 
 <p><br />
-… and the lookup is now 10times faster. What is almost free with Boost.MultiIndex — adding an index — has definitely a cost in our alternative solution: if we add a <em>std::unorered_set</em>,
+… and the lookup is now ~5times faster. What is almost free with Boost.MultiIndex — adding an index — has definitely a cost in our alternative solution: if we add a <em>std::unorered_set</em>,
 the time of insertion and removal grows significantly (and the complexity of the code that manages this additional container too).</p>
 
 <p><img src="/assets/images/speed_boost_multi_index_std_set_and_unordered_set.jpg" alt="Speed comparisons between boost::multi_index_container with three indexes (two ordered, one hashed) and two std::set plus std::unordered_set, time in ms, measured on 1e6 iterations." /></p>
