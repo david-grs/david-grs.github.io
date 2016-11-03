@@ -6,8 +6,8 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Wed, 02 Nov 2016 21:56:45 +0100</pubDate>
-    <lastBuildDate>Wed, 02 Nov 2016 21:56:45 +0100</lastBuildDate>
+    <pubDate>Thu, 03 Nov 2016 21:21:27 +0100</pubDate>
+    <lastBuildDate>Thu, 03 Nov 2016 21:21:27 +0100</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
     
       <item>
@@ -20,11 +20,12 @@ containers: faster, cleaner and simpler code.&lt;/p&gt;
 
 &lt;h2 id=&quot;multiple-views&quot;&gt;Multiple views&lt;/h2&gt;
 &lt;blockquote&gt;
-  &lt;p&gt;You have a set of unique integers and do mainly two operations on it: &lt;/p&gt;
+  &lt;p&gt;You have a set of struct composed by two integers x and y and do mainly two operations on it: &lt;/p&gt;
 
   &lt;ul&gt;
-    &lt;li&gt;&lt;em&gt;adding an integer&lt;/em&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;em&gt;iterating over the set in ascending and descending order&lt;/em&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;em&gt;adding an entry&lt;/em&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;em&gt;iterating over the set in ascending order on x&lt;/em&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;em&gt;iterating over the set in ascending order on y&lt;/em&gt;&lt;/li&gt;
   &lt;/ul&gt;
 &lt;/blockquote&gt;
 
@@ -32,22 +33,33 @@ containers: faster, cleaner and simpler code.&lt;/p&gt;
 
 &lt;noscript&gt;&lt;pre&gt;namespace tags
 {
-struct asc {};
-struct desc{};
+    struct x_asc {};
+    struct y_desc{};
+    struct unordered {};
 }
 
+struct A
+{
+    A(int _x, int _y) :
+      x(_x), y(_y)
+    {)
+
+    int x;
+    int y;
+};
+
 using sorted_ints = boost::multi_index_container&amp;lt;
-  int,                   // the stored object
+  A,                          // the stored object
   indexed_by&amp;lt;
-    ordered_unique&amp;lt;      // first view
-      tag&amp;lt;tags::asc&amp;gt;,    // tag used to access the view
-      identity&amp;lt;int&amp;gt;,     // which part of the object is the key? the entire object.
-      std::less&amp;lt;int&amp;gt;     // ascending order
+    ordered_unique&amp;lt;           // first view
+      tag&amp;lt;tags::x_asc&amp;gt;,       // tag used to access the view
+      member&amp;lt;A, int, &amp;amp;A::x&amp;gt;,  // ordered on x... 
+      std::less&amp;lt;int&amp;gt;          // ... by ascending order
     &amp;gt;,
     ordered_unique&amp;lt;      // second view
-      tag&amp;lt;tags::desc&amp;gt;,   // its tag
-      identity&amp;lt;int&amp;gt;,     // again, the key is the entire object
-      std::greater&amp;lt;int&amp;gt;  // descending order
+      tag&amp;lt;tags::y_asc&amp;gt;,       // tag used to access the view
+      member&amp;lt;A, int, &amp;amp;A::x&amp;gt;,  // ordered on y... 
+      std::less&amp;lt;int&amp;gt;          // ... by ascending order
     &amp;gt;
   &amp;gt;
 &amp;gt;;&lt;/pre&gt;&lt;/noscript&gt;
@@ -59,21 +71,21 @@ difference is that you have to get a &lt;em&gt;view&lt;/em&gt; on the container 
 
 &lt;noscript&gt;&lt;pre&gt;sorted_ints mic;
 
-// insert() and erase() can be performed directly on the container
-mic.insert(2);
-mic.insert(3);
+// insert(), emplace() and erase() can be performed directly on the container
+mic.insert(A(2, 3));
+mic.emplace(3, 4);
 
-auto&amp;amp;&amp;amp; view = mic.get&amp;lt;tags::asc&amp;gt;();
+auto&amp;amp;&amp;amp; view = mic.get&amp;lt;tags::x_asc&amp;gt;();
 auto it = view.find(3);
 
 mic.erase(it);
 
-for (auto&amp;amp;&amp;amp; i : view)
-  std::cout &amp;lt;&amp;lt; i &amp;lt;&amp;lt; std::endl;&lt;/pre&gt;&lt;/noscript&gt;
+for (auto&amp;amp;&amp;amp; a : view)
+  std::cout &amp;lt;&amp;lt; &amp;quot;x=&amp;quot; &amp;lt;&amp;lt; a.x &amp;lt;&amp;lt; &amp;quot; y=&amp;quot; &amp;lt;&amp;lt; a.y &amp;lt;&amp;lt; std::endl;&lt;/pre&gt;&lt;/noscript&gt;
 &lt;script src=&quot;https://gist.github.com/david-grs/7519f9b37941626a673926e498317305.js?file=mic_view.cpp&quot;&gt; &lt;/script&gt;
 
 &lt;h2 id=&quot;the-unfortunate-alternative&quot;&gt;The unfortunate alternative&lt;/h2&gt;
-&lt;p&gt;The alternative and unfortunately most common way to solve this problem is to maintain two &lt;em&gt;std::set&lt;/em&gt;, one using &lt;em&gt;std::greater&lt;/em&gt;, the other one &lt;em&gt;std::less&lt;/em&gt;. 
+&lt;p&gt;The alternative and unfortunately most common way to solve this problem is to maintain two &lt;em&gt;std::set&lt;/em&gt;, one using a comparator on &lt;em&gt;x&lt;/em&gt;, the other one on &lt;em&gt;y&lt;/em&gt;. 
 However, there are few problems with this approach:&lt;/p&gt;
 
 &lt;ol&gt;
@@ -106,22 +118,23 @@ and deletion, both sets need to be updated. This is especially bad as these oper
 &lt;p&gt;We see that the lookup is slightly slower, probably due to the overhead added by the multiple indexes. What can we do about that? Well, adding a third index, not &lt;em&gt;ordered&lt;/em&gt; this time, but &lt;em&gt;hashed&lt;/em&gt;! &lt;/p&gt;
 
 &lt;noscript&gt;&lt;pre&gt;using sorted_ints = boost::multi_index_container&amp;lt;
-  int,
+  A,
   indexed_by&amp;lt;
     ordered_unique&amp;lt;
-      tag&amp;lt;tags::asc&amp;gt;,
-      identity&amp;lt;int&amp;gt;,
+      tag&amp;lt;tags::x_asc&amp;gt;,
+      member&amp;lt;A, int, &amp;amp;A::x&amp;gt;,
       std::less&amp;lt;int&amp;gt;
     &amp;gt;,
     ordered_unique&amp;lt;
-      tag&amp;lt;tags::desc&amp;gt;,
-      identity&amp;lt;int&amp;gt;,
+      tag&amp;lt;tags::y_asc&amp;gt;,
+      member&amp;lt;A, int, &amp;amp;A::y&amp;gt;,
       std::greater&amp;lt;int&amp;gt;
     &amp;gt;,
-    hashed_unique&amp;lt;           // third view: unordered (hashed)
-      tag&amp;lt;tags::unordered&amp;gt;,  // its tag
-      identity&amp;lt;int&amp;gt;          // we hash the entire value
-    &amp;gt;                        // no need to specify std::hash&amp;lt;int&amp;gt; here (it is the default parameter) 
+    hashed_unique&amp;lt;            // third view: unordered (hashed)
+      tag&amp;lt;tags::unordered&amp;gt;,   // its tag
+      identity&amp;lt;A&amp;gt;,            // we hash the entire A, not only x or y
+      std::hash&amp;lt;A&amp;gt;
+    &amp;gt;
   &amp;gt;
 &amp;gt;;&lt;/pre&gt;&lt;/noscript&gt;
 &lt;script src=&quot;https://gist.github.com/david-grs/7519f9b37941626a673926e498317305.js?file=mic_ints_asc_desc_hashed.cpp&quot;&gt; &lt;/script&gt;
@@ -191,7 +204,7 @@ benchmark, where the lookup was faster on  &lt;em&gt;boost::multi_index_containe
 &lt;/table&gt;
 
 &lt;p&gt;&lt;br /&gt;
-Then, in the previous double-ordered and hashed container, the overhead was &lt;em&gt;24+24+16=64 bytes&lt;/em&gt;. If we take &lt;em&gt;sizeof(int) == 4 bytes&lt;/em&gt;, each node takes &lt;em&gt;68 bytes&lt;/em&gt; in memory.&lt;/p&gt;
+Then, in the previous double-ordered and hashed container, the overhead was &lt;em&gt;24+24+16=64 bytes&lt;/em&gt;. If we take &lt;em&gt;sizeof(int) == 4 bytes&lt;/em&gt;, each node takes &lt;em&gt;72 bytes&lt;/em&gt; in memory.&lt;/p&gt;
 
 &lt;p&gt;In the other solution, each instance of &lt;em&gt;std::set&lt;/em&gt; and &lt;em&gt;std::unordered_set&lt;/em&gt; uses &lt;em&gt;40 bytes&lt;/em&gt; (GCC 6.2, Linux, x86-64), resulting in a usage of &lt;em&gt;120 bytes&lt;/em&gt; per node.&lt;/p&gt;
 

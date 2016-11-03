@@ -95,11 +95,12 @@ containers: faster, cleaner and simpler code.</p>
 
 <h2 id="multiple-views">Multiple views</h2>
 <blockquote>
-  <p>You have a set of unique integers and do mainly two operations on it: </p>
+  <p>You have a set of struct composed by two integers x and y and do mainly two operations on it: </p>
 
   <ul>
-    <li><em>adding an integer</em></li>
-    <li><em>iterating over the set in ascending and descending order</em></li>
+    <li><em>adding an entry</em></li>
+    <li><em>iterating over the set in ascending order on x</em></li>
+    <li><em>iterating over the set in ascending order on y</em></li>
   </ul>
 </blockquote>
 
@@ -107,22 +108,33 @@ containers: faster, cleaner and simpler code.</p>
 
 <noscript><pre>namespace tags
 {
-struct asc {};
-struct desc{};
+    struct x_asc {};
+    struct y_desc{};
+    struct unordered {};
 }
 
+struct A
+{
+    A(int _x, int _y) :
+      x(_x), y(_y)
+    {)
+
+    int x;
+    int y;
+};
+
 using sorted_ints = boost::multi_index_container&lt;
-  int,                   // the stored object
+  A,                          // the stored object
   indexed_by&lt;
-    ordered_unique&lt;      // first view
-      tag&lt;tags::asc&gt;,    // tag used to access the view
-      identity&lt;int&gt;,     // which part of the object is the key? the entire object.
-      std::less&lt;int&gt;     // ascending order
+    ordered_unique&lt;           // first view
+      tag&lt;tags::x_asc&gt;,       // tag used to access the view
+      member&lt;A, int, &amp;A::x&gt;,  // ordered on x... 
+      std::less&lt;int&gt;          // ... by ascending order
     &gt;,
     ordered_unique&lt;      // second view
-      tag&lt;tags::desc&gt;,   // its tag
-      identity&lt;int&gt;,     // again, the key is the entire object
-      std::greater&lt;int&gt;  // descending order
+      tag&lt;tags::y_asc&gt;,       // tag used to access the view
+      member&lt;A, int, &amp;A::x&gt;,  // ordered on y... 
+      std::less&lt;int&gt;          // ... by ascending order
     &gt;
   &gt;
 &gt;;</pre></noscript>
@@ -134,21 +146,21 @@ difference is that you have to get a <em>view</em> on the container for some of 
 
 <noscript><pre>sorted_ints mic;
 
-// insert() and erase() can be performed directly on the container
-mic.insert(2);
-mic.insert(3);
+// insert(), emplace() and erase() can be performed directly on the container
+mic.insert(A(2, 3));
+mic.emplace(3, 4);
 
-auto&amp;&amp; view = mic.get&lt;tags::asc&gt;();
+auto&amp;&amp; view = mic.get&lt;tags::x_asc&gt;();
 auto it = view.find(3);
 
 mic.erase(it);
 
-for (auto&amp;&amp; i : view)
-  std::cout &lt;&lt; i &lt;&lt; std::endl;</pre></noscript>
+for (auto&amp;&amp; a : view)
+  std::cout &lt;&lt; &quot;x=&quot; &lt;&lt; a.x &lt;&lt; &quot; y=&quot; &lt;&lt; a.y &lt;&lt; std::endl;</pre></noscript>
 <script src="https://gist.github.com/david-grs/7519f9b37941626a673926e498317305.js?file=mic_view.cpp"> </script>
 
 <h2 id="the-unfortunate-alternative">The unfortunate alternative</h2>
-<p>The alternative and unfortunately most common way to solve this problem is to maintain two <em>std::set</em>, one using <em>std::greater</em>, the other one <em>std::less</em>. 
+<p>The alternative and unfortunately most common way to solve this problem is to maintain two <em>std::set</em>, one using a comparator on <em>x</em>, the other one on <em>y</em>. 
 However, there are few problems with this approach:</p>
 
 <ol>
@@ -181,22 +193,23 @@ and deletion, both sets need to be updated. This is especially bad as these oper
 <p>We see that the lookup is slightly slower, probably due to the overhead added by the multiple indexes. What can we do about that? Well, adding a third index, not <em>ordered</em> this time, but <em>hashed</em>! </p>
 
 <noscript><pre>using sorted_ints = boost::multi_index_container&lt;
-  int,
+  A,
   indexed_by&lt;
     ordered_unique&lt;
-      tag&lt;tags::asc&gt;,
-      identity&lt;int&gt;,
+      tag&lt;tags::x_asc&gt;,
+      member&lt;A, int, &amp;A::x&gt;,
       std::less&lt;int&gt;
     &gt;,
     ordered_unique&lt;
-      tag&lt;tags::desc&gt;,
-      identity&lt;int&gt;,
+      tag&lt;tags::y_asc&gt;,
+      member&lt;A, int, &amp;A::y&gt;,
       std::greater&lt;int&gt;
     &gt;,
-    hashed_unique&lt;           // third view: unordered (hashed)
-      tag&lt;tags::unordered&gt;,  // its tag
-      identity&lt;int&gt;          // we hash the entire value
-    &gt;                        // no need to specify std::hash&lt;int&gt; here (it is the default parameter) 
+    hashed_unique&lt;            // third view: unordered (hashed)
+      tag&lt;tags::unordered&gt;,   // its tag
+      identity&lt;A&gt;,            // we hash the entire A, not only x or y
+      std::hash&lt;A&gt;
+    &gt;
   &gt;
 &gt;;</pre></noscript>
 <script src="https://gist.github.com/david-grs/7519f9b37941626a673926e498317305.js?file=mic_ints_asc_desc_hashed.cpp"> </script>
@@ -266,7 +279,7 @@ benchmark, where the lookup was faster on  <em>boost::multi_index_container</em>
 </table>
 
 <p><br />
-Then, in the previous double-ordered and hashed container, the overhead was <em>24+24+16=64 bytes</em>. If we take <em>sizeof(int) == 4 bytes</em>, each node takes <em>68 bytes</em> in memory.</p>
+Then, in the previous double-ordered and hashed container, the overhead was <em>24+24+16=64 bytes</em>. If we take <em>sizeof(int) == 4 bytes</em>, each node takes <em>72 bytes</em> in memory.</p>
 
 <p>In the other solution, each instance of <em>std::set</em> and <em>std::unordered_set</em> uses <em>40 bytes</em> (GCC 6.2, Linux, x86-64), resulting in a usage of <em>120 bytes</em> per node.</p>
 
