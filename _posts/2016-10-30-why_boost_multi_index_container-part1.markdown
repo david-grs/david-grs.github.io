@@ -64,7 +64,7 @@ We see that the lookup is slightly slower, probably due to the overhead added by
 
 {% gist david-grs/7519f9b37941626a673926e498317305 mic_ints_asc_desc_hashed.cpp %}
 <br />
-... and the lookup is now 10times faster. What is almost free with Boost.MultiIndex &mdash; adding an index &mdash; has definitely a cost in our alternative solution: if we add a *std::unorered_set*,
+... and the lookup is now ~5times faster. What is almost free with Boost.MultiIndex &mdash; adding an index &mdash; has definitely a cost in our alternative solution: if we add a *std::unorered_set*,
 the time of insertion and removal grows significantly (and the complexity of the code that manages this additional container too).
 
 ![Speed comparisons between boost::multi_index_container with three indexes (two ordered, one hashed) and two std::set plus std::unordered_set, time in ms, measured on 1e6 iterations.](/assets/images/speed_boost_multi_index_std_set_and_unordered_set.jpg)
