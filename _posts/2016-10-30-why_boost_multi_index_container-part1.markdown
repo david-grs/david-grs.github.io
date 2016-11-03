@@ -14,10 +14,11 @@ containers: faster, cleaner and simpler code.
 
 Multiple views
 --------------
-> You have a set of unique integers and do mainly two operations on it: 
+> You have a set of struct composed by two integers x and y and do mainly two operations on it: 
 >
-> + *adding an integer*
-> + *iterating over the set in ascending and descending order*
+> + *adding an entry*
+> + *iterating over the set in ascending order on x*
+> + *iterating over the set in ascending order on y*
 
 This is achievable quite easily with *boost::multi\_index\_container*:
 
@@ -31,7 +32,7 @@ difference is that you have to get a *view* on the container for some of the ope
 
 The unfortunate alternative
 ---------------------------
-The alternative and unfortunately most common way to solve this problem is to maintain two _std::set_, one using _std::greater_, the other one _std::less_. 
+The alternative and unfortunately most common way to solve this problem is to maintain two _std::set_, one using a comparator on *x*, the other one on *y*. 
 However, there are few problems with this approach:
 
 1. it is *error prone*: each operation has to be done on the two sets, and if you forget you will have a bad time
@@ -108,7 +109,7 @@ sequenced                | 2 pointers | 16 bytes
 random                   | 1 pointer | 8 bytes
 
 <br />
-Then, in the previous double-ordered and hashed container, the overhead was *24+24+16=64 bytes*. If we take *sizeof(int) == 4 bytes*, each node takes *68 bytes* in memory.
+Then, in the previous double-ordered and hashed container, the overhead was *24+24+16=64 bytes*. If we take *sizeof(int) == 4 bytes*, each node takes *72 bytes* in memory.
 
 In the other solution, each instance of *std::set* and *std::unordered_set* uses *40 bytes* (GCC 6.2, Linux, x86-64), resulting in a usage of *120 bytes* per node.
 
