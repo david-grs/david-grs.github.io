@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta charset="utf-8">
+  <!-- (1) Optimize for mobile versions: http://goo.gl/EOpFl -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- (1) force latest IE rendering engine: bit.ly/1c8EiC9 -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+  <title>Why you should use Boost.MultiIndex (Part II)</title>
+  <meta name="description" content="Last week, I posted the first part of this article, where I explained the advantages of Boost.MultiIndex over the standard containers when you need to have multiple views on a set of data." />
+
+  <meta name="HandheldFriendly" content="True" />
+  <meta name="MobileOptimized" content="320" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  
+  <meta property="og:site_name" content="Thoughts from a Wall Street developer" />
+  <meta property="og:title" content="Why you should use Boost.MultiIndex (Part II)"/>
+  
+  <meta property="og:description" content="Last week, I posted the first part of this article, where I explained the advantages of Boost.MultiIndex over the standard containers when you need to have multiple views on a set of data." />
+  
+  <meta property="og:image" content="http://david-grs.github.io" />
+  <meta property="og:url" content="http://david-grs.github.io/why_boost_multi_index_container-part2" >
+  <meta property="og:type" content="blog" />
+  <meta property="article:published_time" content="2016-11-15T22:04:00+01:00">
+
+  <link rel="canonical" href="http://david-grs.github.io/why_boost_multi_index_container-part2"/>
+  <link rel="shortcut icon" href="/assets/images/favicon.png" type="image/png"/>
+  <link rel="stylesheet" href="//brick.a.ssl.fastly.net/Linux+Libertine:400,400i,700,700i/Open+Sans:400,400i,700,700i">
+  <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+
+  <link rel="stylesheet" type="text/css" media="screen" href="/css/main.css" />
+  <link rel="stylesheet" type="text/css" media="print" href="/css/print.css" />
+
+  <link rel="apple-touch-icon" sizes="57x57" href="/assets/favicon/apple-touch-icon-57x57.png">
+  <link rel="apple-touch-icon" sizes="60x60" href="/assets/favicon/apple-touch-icon-60x60.png">
+  <link rel="apple-touch-icon" sizes="72x72" href="/assets/favicon/apple-touch-icon-72x72.png">
+  <link rel="apple-touch-icon" sizes="76x76" href="/assets/favicon/apple-touch-icon-76x76.png">
+  <link rel="apple-touch-icon" sizes="114x114" href="/assets/favicon/apple-touch-icon-114x114.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="/assets/favicon/apple-touch-icon-120x120.png">
+  <link rel="apple-touch-icon" sizes="144x144" href="/assets/favicon/apple-touch-icon-144x144.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/assets/favicon/apple-touch-icon-152x152.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-touch-icon-180x180.png">
+  <link rel="icon" type="image/png" href="/assets/favicon/favicon-32x32.png" sizes="32x32">
+  <link rel="icon" type="image/png" href="/assets/favicon/favicon-194x194.png" sizes="194x194">
+  <link rel="icon" type="image/png" href="/assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/png" href="/assets/favicon/android-chrome-192x192.png" sizes="192x192">
+  <link rel="icon" type="image/png" href="/assets/favicon/favicon-16x16.png" sizes="16x16">
+  <link rel="manifest" href="/assets/favicon/manifest.json">
+  <link rel="mask-icon" href="/assets/favicon/safari-pinned-tab.svg" color="#5bbad5">
+  <meta name="msapplication-TileColor" content="#00aba9">
+  <meta name="msapplication-TileImage" content="/mstile-144x144.png">
+  <meta name="theme-color" content="#ffffff"> 
+  
+</head>
+
+  <body itemscope itemtype="http://schema.org/Article">
+    <!-- header start -->
+
+<a href="http://david-grs.github.io" class="logo-readium"><span class="logo" style="background-image: url()"></span></a>
+
+<!-- header end -->
+
+    <main class="content" role="main">
+      <article class="post">
+        
+        <div class="noarticleimage">
+          <div class="post-meta">
+            <h1 class="post-title">Why you should use Boost.MultiIndex (Part II)</h1>
+            <div class="cf post-meta-text">
+              <div class="author-image" style="background-image: url(/assets/images/author.jpg)">Blog Logo</div>
+              <h4 class="author-name" itemprop="author" itemscope itemtype="http://schema.org/Person">David Gross</h4>
+              on
+              <time datetime="2016-11-15T22:04:00+01:00">15 Nov 2016</time>
+              <!-- , tagged on <span class="post-tag-">, <a href="/tag/"></a></span> -->
+            </div>
+          </div>
+        </div>
+        <br>
+        <br>
+        <br>
+        
+        <section class="post-content">
+          <div class="post-reading">
+            <span class="post-reading-time"></span> read
+          </div>
+          <a name="topofpage"></a>
+          <p>Last week, I posted the <a href="/why_boost_multi_index_container-part1/">first part</a> of this article, where I explained the advantages 
+of Boost.MultiIndex over the standard containers when you need to have multiple views on a set of data.</p>
+
+<p>In this second part, I would like to talk about the benefits you can get from Boost.MultiIndex, even if you only have one index. </p>
+
+<p>One interesting and powerful aspect of Boost.MultiIndex: it allows you to add an index of type <em>T</em>, where <em>T</em> is different from the stored type. And 
+it is more frequent and useful that you could think.</p>
+
+<h2 id="stdstring-as-a-key">std::string as a key</h2>
+<p>Who never used a <em>std::unordered_map&lt;std::string, X&gt;</em>? This is the most straightforward 
+way to lookup for an object with a string: it is simple, relatively fast, and convenient as <em>std::hash&lt;std::string&gt;</em> is 
+provided by the standard library.</p>
+
+<p>However, what if you get another string type as input for your lookup? I already found myself in this situation multiple times:  </p>
+
+<ul>
+  <li>when reading from shared memory, a socket, or a device, you get a <em>const char*</em></li>
+  <li>when using APIs that provide their own string implementations, like Qt: even if your entire codebase is using <em>std::string</em>, you will have some boundary zones where both types are used</li>
+</ul>
+
+<noscript><pre>struct X
+{
+  std::string str;
+  // ... more attributes
+};
+
+struct message_handler
+{
+  void receive(const char* buffer, size_t size)  
+  {
+    // no choice here, lookup has to be on std::string
+    auto it = _xs.find({buffer, size}); 
+    // ...
+  }
+
+private:
+  std::unordered_map&lt;std::string, X&gt; _xs;
+};
+</pre></noscript>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup.h"> </script>
+
+<p><br />
+One would say that you could simply convert your string to <em>std::string</em> before the lookup. However this might not be acceptable from a performance point of view. Even for 
+small strings, where you could argue that many STL implementations use SSO, which avoids to have a memory allocation: bytes are still copied and the performance
+of your system heavily relies on implementation details.</p>
+
+<p>The solution here is to use C++17’s <a href="http://en.cppreference.com/w/cpp/experimental/basic_string_view"><em>std::string_view</em></a>. 
+This is not possible with standard containers, though: with <em>std::unordered_map</em> and friends, you cannot query on another type than <em>Key</em> — and using a <em>std::unordered_map&lt;std::string_view, X&gt;</em> 
+is a bad choice, for number of reasons I explain in the <a href="#appendix">appendix</a>.</p>
+
+<h2 id="a-nameappendixaappendix"><a name="appendix"></a>Appendix</h2>
+<p><br /></p>
+
+<blockquote>
+
+  <p>Why using <em>std::unordered_map&lt;std::string_view, X&gt;</em> is bad design choice?</p>
+
+</blockquote>
+
+<p>It is a bad design because it is fragile and error-prone. The key is <em>const std::string_view</em>, but as it is a view, it can actually change anytime. The only
+acceptable scenario in my mind would be if <em>X</em> owns the viewed string as <em>const std::string</em>.
+<br /></p>
+
+<blockquote>
+
+  <p>How do you insert an element in such container?</p>
+
+</blockquote>
+
+<p>Which one of the followings are correct?</p>
+
+<ol>
+  <li><code>m.emplace(x.str, x)</code></li>
+  <li><code>std::experimental::string_view sv{x.str};</code><br />
+<code>m.emplace(sv, x.str); </code> </li>
+  <li><code>m.emplace(x.str, std::move(x));</code></li>
+  <li><code>std::experimental::string_view sv{x.str};</code><br />
+<code>m.emplace(sv, std::move(x));</code></li>
+</ol>
+
+<p>… only the last one:</p>
+
+<ol>
+  <li>is wrong because <em>x</em> is going to be copied, while the key is pointing to <em>x.str</em></li>
+  <li>is wrong for the same reason</li>
+  <li>is wrong because there is no guarantee on the order of evaluation of arguments, thus <em>x</em> could be moved before <em>x.str</em> is evaluated, resulting in the construction of a string view that points to some undefined memory area</li>
+  <li>
+    <p>is correct: we consrtruct the view, and move <em>x</em></p>
+  </li>
+  <li>it is SAFER from an exception PoV: references are never invalidated, even on re-hash.</li>
+</ol>
+
+<p>&lt;insert table of references / iterator invalidation: map, unordered_map, boost.mic, google dense hash map&gt;</p>
+
+<h2 id="owned-object-uniqueptr-as-a-key">owned object (unique_ptr) as a key</h2>
+
+<h2 id="function-as-a-key">function as a key</h2>
+
+<p>index on a volume : x<em>y</em>z</p>
+
+<h2 id="composite-keys">composite keys</h2>
+<p>session example: lookup on username + script name</p>
+
+<dl>
+  <dt>I read from shared memory and get a const char*</dt>
+  <dd>if you read it from shared memory, from an external component: a shared memory, a socket, or another API that does not provide you an <em>std::string</em>?
+<em>const char*</em></dd>
+</dl>
+
+<p>Let’s start with the most classical and boring declaration:</p>
+
+<noscript><pre>struct employee
+{
+  std::string first_name;
+  std::string last_name;
+  int age;
+  double salary;
+};</pre></noscript>
+<script src="https://gist.github.com/david-grs/b95f77dbac91edf270befedefcf9b700.js?file=employee.h"> </script>
+
+<p>You have a set of <em>employee</em> instances and want to do lookups on the <em>full name</em>. With Boost.MultiIndex, this can be done via a <em>composite_key</em>:</p>
+
+<noscript><pre>namespace tags
+{
+  struct by_full_name {};
+}
+
+using employees = boost::multi_index_container&lt;
+  employee,
+  indexed_by&lt;
+    hashed_unique&lt;
+      tag&lt;by_full_name&gt;,
+      composite_key&lt;
+        employee,
+        member&lt;employee, std::string, &amp;employee::first_name&gt;,
+        member&lt;employee, std::string, &amp;employee::last_name&gt;
+      &gt;
+    &gt;
+  &gt;
+&gt;;</pre></noscript>
+<script src="https://gist.github.com/david-grs/b95f77dbac91edf270befedefcf9b700.js?file=mic_employee_full_name.cc"> </script>
+
+<p>No need to declare any <em>operator==</em> or specialization of <em>std::hash</em>, they are generated by the container. When a lookup has to be done, we
+use Boost.Tuple to create the composite key:</p>
+
+<noscript><pre>employees m;
+
+m.insert({&quot;john&quot;, &quot;doe&quot;, 21, 2000.0});
+    
+auto&amp;&amp; view = m.get&lt;by_full_name&gt;();
+
+auto it = view.find(boost::make_tuple(&quot;john&quot;, &quot;doe&quot;));
+std::cout &lt;&lt; it-&gt;first_name &lt;&lt; std::endl;</pre></noscript>
+<script src="https://gist.github.com/david-grs/b95f77dbac91edf270befedefcf9b700.js?file=mic_employee_full_name_lookup.cc"> </script>
+
+<ol>
+  <li>
+    <p>same example, lets imagine now that the actual key on your employee is a full name. </p>
+
+    <p>jjust replace</p>
+
+    <pre><code>     BOOST_MULTI_INDEX_MEMBER(employee, std::string, first_name)
+</code></pre>
+
+    <p>by</p>
+
+    <pre><code>   composite_key&lt;
+     employee,
+     BOOST_MULTI_INDEX_MEMBER(employee, std::string, first_name),
+     BOOST_MULTI_INDEX_MEMBER(employee, std::string, last_name)
+   &gt;
+</code></pre>
+
+    <p>on the other side, with map, things are now much complicated….. :</p>
+
+    <p>what can you do?
+     1. std::map&lt;std::pair&lt;std::string, std::string&gt;, employee&gt; m;
+        -&gt; this is the quickest and easiest solution, as you don’t have to deal with operator&lt; or == + hash. the problem is: it is unclear, error prone (which field is the first?), and ugly.</p>
+
+    <pre><code>    it would be a bit better with : using FullName = std::pair&lt;std::string, std::string&gt; but still.
+
+ 2. std::map&lt;full_name, employee&gt;: the least bad solution here imho if you don;t caere about performance, but you have to write operator&lt; /==/hash. 
+
+ 3. std::set&lt;employee, employee_by_name&gt; is a solution too, but now you have to const_cast all the time (as employee is the key), and also be very careful on when you do it... you still have to write an operator&lt; / == / hash though.
+</code></pre>
+
+    <p>so in any cases, you have to write quite some code, so here, we see that the small overhead we had with boost.mic is already gone (with all the benefits we have from it for free!)</p>
+  </li>
+</ol>
+
+<p>===»&gt; in a more general way, you can use function !</p>
+
+<ol>
+  <li>in general, it will be more efficient, depending on the key size:
+    <ul>
+      <li>
+        <p>on lookup, you have to build the key. 
+             1. if it is a string, don’t think about it, don’t use it, cf point 4
+             2. 
+    struct Employee { std::string name; std::string address; int age; etc }; </p>
+
+        <pre><code>map&lt;std::string, Employee&gt; mEmployeeByName - you will build a string, see later
+
+an alternative would be to do set&lt;Employee, ByName&gt; - but you usually don't want that, because 1. Employee will need a ctor from the field used as key (which can break your API just for that) 2. Employee will be const, as it is the key. 
+</code></pre>
+      </li>
+      <li>
+        <p>on insert, you have to copy if you use map, you have to copy the key
+its the same roughly here - because you can move in map but not un boost.mic</p>
+      </li>
+      <li>
+        <p>on lookup, if you use map, it is bad for cache locality, as you make hot the area of the key, not your object - depending on the side of the key this could be annoying</p>
+      </li>
+    </ul>
+  </li>
+  <li>whenever your key is a STRING: because it is safer, but also FASTER:
+    <ul>
+      <li>string as a key is bad, for 2 reasons:
+        <ul>
+          <li>
+            <p>on lookup, you have to build a string (heap alloc if not a small string). this is annoying because you often get string from shared memory or socket buffer, and they are 
+not string but <em>view</em>. and with std::unordered_map/map/set/etc you cannot perform a lookup from a type different that the key. </p>
+          </li>
+          <li>
+            <p>on insert, because you have to copy it, again a heap alloc and bytes copies… which is quite bad.</p>
+          </li>
+        </ul>
+      </li>
+      <li>so lets use string_view as a key! yes, but you have to do it right. 
+   cf </li>
+    </ul>
+  </li>
+  <li>type robustnes: because your key might not be strongly typed - boost.mic makes it clean on what is the view</li>
+</ol>
+
+<p>struct employee
+  {
+    std::string first_name;
+    std::string last_name;
+    int age; 
+    double salary;
+  };</p>
+
+<p>std::map&lt;std::string, employee&gt; </p>
+
+<p>or using first_name = std::string 
+       std::map&lt;first_name, employee&gt;</p>
+
+<p>without going further, just by the look of the type, we can only guess about the lookup. first name? last name? both…?</p>
+
+<p>while :</p>
+
+<pre><code>boost::multi_index_container&lt;
+  employee,
+  indexed_by&lt;
+    hashed_unique&lt;
+        tag&lt;by_name&gt;,
+        BOOST_MULTI_INDEX_MEMBER(employee, std::string, first_name)
+    &gt;
+  &gt;
+&gt;
+</code></pre>
+
+<p>… the type describes entirely what it does: it contains an employee, which is indexed by only one index, unique and hashable, composed by the first name. </p>
+
+
+        </section>
+        <footer class="post-footer">
+          <section class="share">
+            
+              
+            
+          </section>
+        </footer>
+        <div class="bottom-teaser cf">
+          <div class="isLeft">
+            <h5 class="index-headline featured"><span>Written by</span></h5>
+            <section class="author">
+              <div class="author-image" style="background-image: url(/assets/images/author.jpg)">Blog Logo</div>
+              <h4>David Gross</h4>
+              <p class="bio"></p>
+              <hr>
+              <p class="published">Published <time datetime="2016-11-15 22:04">15 Nov 2016</time></p>
+            </section>
+          </div>
+          
+          <div class="isRight">
+            <h5 class="index-headline featured"><span>Supported by</span></h5>
+            <footer class="site-footer">
+              <section class="poweredby">Proudly published with <a href="http://jekyllrb.com"> Jekyll</a></section>
+              <a class="subscribe" href="/feed.xml"> <span class="tooltip"> <i class="fa fa-rss"></i> You should subscribe to my feed.</span></a>
+              <div class="inner">
+                <section class="copyright">All content copyright <a href="/">David Gross</a> &copy; 2016<br>All rights reserved.</section>
+              </div>
+            </footer>
+          </div>
+        </div>
+        
+        <div id="disqus_thread"></div>
+        <script type="text/javascript">
+            /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+            var disqus_shortname = 'david-grs'; // required: replace example with your forum shortname
+
+            /* * * DON'T EDIT BELOW THIS LINE * * */
+            (function() {
+                var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+                dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+                (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+            })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+        
+      </article>
+    </main>
+    <div class="bottom-closer">
+      <div class="background-closer-image"  style="background-image: url(/assets/images/cover.jpg)">
+        Image
+      </div>
+      <div class="inner">
+        <h1 class="blog-title">Thoughts from a Wall Street developer</h1>
+        <h2 class="blog-description">A blog about C++, with an emphasis on low-latency, performance measurements and system programming.
+</h2>
+        <a href="/" class="btn">Back to Overview</a>
+      </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+<script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+<script type="text/javascript" src="/assets/js/index.js"></script>
+<script type="text/javascript" src="/assets/js/readingTime.min.js"></script>
+<script>
+(function ($) {
+  "use strict";
+  $(document).ready(function(){
+
+    var $window = $(window),
+    $image = $('.post-image-image, .teaserimage-image');
+    
+      $window.on('scroll', function() {
+        var top = $window.scrollTop();
+
+        if (top < 0 || top > 1500) { return; }
+        $image
+          .css('transform', 'translate3d(0px, '+top/3+'px, 0px)')
+          .css('opacity', 1-Math.max(top/700, 0));
+      });
+      $window.trigger('scroll');
+
+      var height = $('.article-image').height();
+      $('.post-content').css('padding-top', height + 'px');
+
+      $('a[href*=#]:not([href=#])').click(function() {
+        if (location.pathname.replace(/^\//,'') == this.pathname.replace(/^\//,'')
+         && location.hostname == this.hostname) {
+          var target = $(this.hash);
+          target = target.length ? target : $('[name=' + this.hash.slice(1) +']');
+          if (target.length) {
+            $('html,body').animate({ scrollTop: target.offset().top }, 500);
+            return false;
+          }
+        }
+      });
+
+  });
+}(jQuery));
+</script>
+
+
+    <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-75603420-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+
+
+  </body>
+</html>
