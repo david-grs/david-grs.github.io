@@ -90,9 +90,10 @@
           <p>Last week, I posted the <a href="/why_boost_multi_index_container-part1/">first part</a> of this article, where I explained the advantages 
 of Boost.MultiIndex over the standard containers when you need to have multiple views on a set of data.</p>
 
-<p>In this second part, I would like to talk about the benefits you can get from Boost.MultiIndex, even if you only have one index. </p>
+<p>In this second part, I would like to talk about the benefits you can get from using Boost.MultiIndex as a single-index hash table, as a replacement
+of <em>std::unordered_map</em>.</p>
 
-<p>One interesting and powerful aspect of Boost.MultiIndex: it allows you to add an index of type <em>T</em>, where <em>T</em> is different from the stored type. And 
+<p>One interesting and powerful aspect of Boost.MultiIndex is that it allows you to add an index of type <em>T</em>, where <em>T</em> is different from the stored type. And 
 it is more frequent and useful that you could think.</p>
 
 <h2 id="stdstring-as-a-key">std::string as a key</h2>
@@ -104,13 +105,14 @@ provided by the standard library.</p>
 
 <ul>
   <li>when reading from shared memory, a socket, or a device, you get a <em>const char*</em></li>
-  <li>when using APIs that provide their own string implementations, like Qt: even if your entire codebase is using <em>std::string</em>, you will have some boundary zones where both types are used</li>
+  <li>when using APIs that provide their own string implementation, like Qt: even if your entire codebase is using <em>std::string</em>, you will have some boundary zones where both types are used</li>
 </ul>
 
-<noscript><pre>struct X
+<noscript><pre>struct stock
 {
-  std::string str;
-  // ... more attributes
+  std::string ref;
+  double price;
+  int volume;
 };
 
 struct message_handler
@@ -118,24 +120,65 @@ struct message_handler
   void receive(const char* buffer, size_t size)  
   {
     // no choice here, lookup has to be on std::string
-    auto it = _xs.find({buffer, size}); 
+    auto it = _stocks.find({buffer, size}); 
     // ...
   }
 
 private:
-  std::unordered_map&lt;std::string, X&gt; _xs;
+  std::unordered_map&lt;std::string, stock&gt; _stocks;
 };
 </pre></noscript>
-<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup.h"> </script>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup.cc"> </script>
 
 <p><br />
-One would say that you could simply convert your string to <em>std::string</em> before the lookup. However this might not be acceptable from a performance point of view. Even for 
-small strings, where you could argue that many STL implementations use SSO, which avoids to have a memory allocation: bytes are still copied and the performance
-of your system heavily relies on implementation details.</p>
+One would say that you could simply convert your string to <em>std::string</em> before the lookup. However this might not be acceptable from a performance point of view, as it will perform a memory allocation. 
+Nowadays, many STL implementations use “small string optimization* (SSO) — up to 15 bytes with g++ 6.2 and 22 chars with clang 3.9 — in order to avoid the memory allocation. Bytes are still 
+copied though, and the performance of your system heavily relies in implementation details. </p>
 
 <p>The solution here is to use C++17’s <a href="http://en.cppreference.com/w/cpp/experimental/basic_string_view"><em>std::string_view</em></a>. 
-This is not possible with standard containers, though: with <em>std::unordered_map</em> and friends, you cannot query on another type than <em>Key</em> — and using a <em>std::unordered_map&lt;std::string_view, X&gt;</em> 
+This is not possible with standard containers, though: with <em>std::unordered_map</em> and <em>std::unordered_set</em>, you cannot query on another type than <em>Key</em> — and using a <em>std::unordered_map&lt;std::string_view, X&gt;</em> 
 is a bad choice, for number of reasons I explain in the <a href="#appendix">appendix</a>.</p>
+
+<p>Easy task with Boost.MultiIndex: simlpy add a method to return a string view and use it as index!</p>
+
+<noscript><pre>struct stock
+{
+  std::experimental::string_view ref_view() const 
+  { 
+    return ref;
+  }
+  
+  std::string ref;
+  double price;
+  int volume;
+};
+
+
+struct message_handler
+{
+  void receive(const char* buffer, size_t size)  
+  {
+    // no memory alloc, no copy
+    std::experimental::string_view ref_view(buffer, size);
+    auto it = _stocks.find(ref_view);  
+    // ...
+  }
+
+private:
+  boost::multi_index_container&lt;
+    stock,
+    indexed_by&lt;
+      hashed_unique&lt;
+        tag&lt;by_reference_view&gt;,
+        const_mem_fun&lt;stock, std::experimental::string_view, &amp;stock::ref_view&gt;,
+        std::hash&lt;std::experimental::string_view&gt;
+      &gt;
+    &gt;
+  &gt; _stocks;
+};</pre></noscript>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup_mic.cc"> </script>
+
+<p><br /></p>
 
 <h2 id="a-nameappendixaappendix"><a name="appendix"></a>Appendix</h2>
 <p><br /></p>
@@ -176,8 +219,181 @@ acceptable scenario in my mind would be if <em>X</em> owns the viewed string as 
   <li>
     <p>is correct: we consrtruct the view, and move <em>x</em></p>
   </li>
+  <li>it is SAFER from an exception PoV: references are never invalidated, even on re-hash.</li>
 </ol>
 
+<p>&lt;insert table of references / iterator invalidation: map, unordered_map, boost.mic, google dense hash map&gt;</p>
+
+<h2 id="owned-object-uniqueptr-as-a-key">owned object (unique_ptr) as a key</h2>
+
+<h2 id="function-as-a-key">function as a key</h2>
+
+<p>index on a volume : x<em>y</em>z</p>
+
+<h2 id="composite-keys">composite keys</h2>
+<p>session example: lookup on username + script name</p>
+
+<dl>
+  <dt>I read from shared memory and get a const char*</dt>
+  <dd>if you read it from shared memory, from an external component: a shared memory, a socket, or another API that does not provide you an <em>std::string</em>?
+<em>const char*</em></dd>
+</dl>
+
+<p>Let’s start with the most classical and boring declaration:</p>
+
+<noscript><pre>struct employee
+{
+  std::string first_name;
+  std::string last_name;
+  int age;
+  double salary;
+};</pre></noscript>
+<script src="https://gist.github.com/david-grs/b95f77dbac91edf270befedefcf9b700.js?file=employee.h"> </script>
+
+<p>You have a set of <em>employee</em> instances and want to do lookups on the <em>full name</em>. With Boost.MultiIndex, this can be done via a <em>composite_key</em>:</p>
+
+<noscript><pre>namespace tags
+{
+  struct by_full_name {};
+}
+
+using employees = boost::multi_index_container&lt;
+  employee,
+  indexed_by&lt;
+    hashed_unique&lt;
+      tag&lt;by_full_name&gt;,
+      composite_key&lt;
+        employee,
+        member&lt;employee, std::string, &amp;employee::first_name&gt;,
+        member&lt;employee, std::string, &amp;employee::last_name&gt;
+      &gt;
+    &gt;
+  &gt;
+&gt;;</pre></noscript>
+<script src="https://gist.github.com/david-grs/b95f77dbac91edf270befedefcf9b700.js?file=mic_employee_full_name.cc"> </script>
+
+<p>No need to declare any <em>operator==</em> or specialization of <em>std::hash</em>, they are generated by the container. When a lookup has to be done, we
+use Boost.Tuple to create the composite key:</p>
+
+<noscript><pre>employees m;
+
+m.insert({&quot;john&quot;, &quot;doe&quot;, 21, 2000.0});
+    
+auto&amp;&amp; view = m.get&lt;by_full_name&gt;();
+
+auto it = view.find(boost::make_tuple(&quot;john&quot;, &quot;doe&quot;));
+std::cout &lt;&lt; it-&gt;first_name &lt;&lt; std::endl;</pre></noscript>
+<script src="https://gist.github.com/david-grs/b95f77dbac91edf270befedefcf9b700.js?file=mic_employee_full_name_lookup.cc"> </script>
+
+<ol>
+  <li>
+    <p>same example, lets imagine now that the actual key on your employee is a full name. </p>
+
+    <p>jjust replace</p>
+
+    <pre><code>     BOOST_MULTI_INDEX_MEMBER(employee, std::string, first_name)
+</code></pre>
+
+    <p>by</p>
+
+    <pre><code>   composite_key&lt;
+     employee,
+     BOOST_MULTI_INDEX_MEMBER(employee, std::string, first_name),
+     BOOST_MULTI_INDEX_MEMBER(employee, std::string, last_name)
+   &gt;
+</code></pre>
+
+    <p>on the other side, with map, things are now much complicated….. :</p>
+
+    <p>what can you do?
+     1. std::map&lt;std::pair&lt;std::string, std::string&gt;, employee&gt; m;
+        -&gt; this is the quickest and easiest solution, as you don’t have to deal with operator&lt; or == + hash. the problem is: it is unclear, error prone (which field is the first?), and ugly.</p>
+
+    <pre><code>    it would be a bit better with : using FullName = std::pair&lt;std::string, std::string&gt; but still.
+
+ 2. std::map&lt;full_name, employee&gt;: the least bad solution here imho if you don;t caere about performance, but you have to write operator&lt; /==/hash. 
+
+ 3. std::set&lt;employee, employee_by_name&gt; is a solution too, but now you have to const_cast all the time (as employee is the key), and also be very careful on when you do it... you still have to write an operator&lt; / == / hash though.
+</code></pre>
+
+    <p>so in any cases, you have to write quite some code, so here, we see that the small overhead we had with boost.mic is already gone (with all the benefits we have from it for free!)</p>
+  </li>
+</ol>
+
+<p>===»&gt; in a more general way, you can use function !</p>
+
+<ol>
+  <li>in general, it will be more efficient, depending on the key size:
+    <ul>
+      <li>
+        <p>on lookup, you have to build the key. 
+             1. if it is a string, don’t think about it, don’t use it, cf point 4
+             2. 
+    struct Employee { std::string name; std::string address; int age; etc }; </p>
+
+        <pre><code>map&lt;std::string, Employee&gt; mEmployeeByName - you will build a string, see later
+
+an alternative would be to do set&lt;Employee, ByName&gt; - but you usually don't want that, because 1. Employee will need a ctor from the field used as key (which can break your API just for that) 2. Employee will be const, as it is the key. 
+</code></pre>
+      </li>
+      <li>
+        <p>on insert, you have to copy if you use map, you have to copy the key
+its the same roughly here - because you can move in map but not un boost.mic</p>
+      </li>
+      <li>
+        <p>on lookup, if you use map, it is bad for cache locality, as you make hot the area of the key, not your object - depending on the side of the key this could be annoying</p>
+      </li>
+    </ul>
+  </li>
+  <li>whenever your key is a STRING: because it is safer, but also FASTER:
+    <ul>
+      <li>string as a key is bad, for 2 reasons:
+        <ul>
+          <li>
+            <p>on lookup, you have to build a string (heap alloc if not a small string). this is annoying because you often get string from shared memory or socket buffer, and they are 
+not string but <em>view</em>. and with std::unordered_map/map/set/etc you cannot perform a lookup from a type different that the key. </p>
+          </li>
+          <li>
+            <p>on insert, because you have to copy it, again a heap alloc and bytes copies… which is quite bad.</p>
+          </li>
+        </ul>
+      </li>
+      <li>so lets use string_view as a key! yes, but you have to do it right. 
+   cf </li>
+    </ul>
+  </li>
+  <li>type robustnes: because your key might not be strongly typed - boost.mic makes it clean on what is the view</li>
+</ol>
+
+<p>struct employee
+  {
+    std::string first_name;
+    std::string last_name;
+    int age; 
+    double salary;
+  };</p>
+
+<p>std::map&lt;std::string, employee&gt; </p>
+
+<p>or using first_name = std::string 
+       std::map&lt;first_name, employee&gt;</p>
+
+<p>without going further, just by the look of the type, we can only guess about the lookup. first name? last name? both…?</p>
+
+<p>while :</p>
+
+<pre><code>boost::multi_index_container&lt;
+  employee,
+  indexed_by&lt;
+    hashed_unique&lt;
+        tag&lt;by_name&gt;,
+        BOOST_MULTI_INDEX_MEMBER(employee, std::string, first_name)
+    &gt;
+  &gt;
+&gt;
+</code></pre>
+
+<p>… the type describes entirely what it does: it contains an employee, which is indexed by only one index, unique and hashable, composed by the first name. </p>
 
 
         </section>
