@@ -131,9 +131,9 @@ using sorted_ints = boost::multi_index_container&lt;
       member&lt;A, int, &amp;A::x&gt;,  // ordered on x... 
       std::less&lt;int&gt;          // ... by ascending order
     &gt;,
-    ordered_unique&lt;      // second view
+    ordered_unique&lt;           // second view
       tag&lt;tags::y_asc&gt;,       // tag used to access the view
-      member&lt;A, int, &amp;A::x&gt;,  // ordered on y... 
+      member&lt;A, int, &amp;A::y&gt;,  // ordered on y... 
       std::less&lt;int&gt;          // ... by ascending order
     &gt;
   &gt;
