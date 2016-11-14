@@ -140,7 +140,7 @@ copied though, and the performance of your system heavily relies on implementati
 This is not possible with standard containers, though: with <em>std::unordered_map</em> and <em>std::unordered_set</em>, you cannot query on another type than <em>Key</em> — and using a <em>std::unordered_map&lt;std::string_view, X&gt;</em> 
 is a bad choice, for a number of reasons I explain in the <a href="#appendix">appendix</a>.</p>
 
-<p>Easy task with Boost.MultiIndex: simlpy add a method to return a string view and use it as index!</p>
+<p>Easy task with Boost.MultiIndex: simlpy add a method that returns a string view and use it as index!</p>
 
 <noscript><pre>struct stock
 {
@@ -173,7 +173,7 @@ private:
 <script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup_mic_string_view.cc"> </script>
 
 <p><br />
-The magic is done on line 23, which defined the hashed unique index as <code>const_mem_fun&lt;stock, std::experimental::string_view, &amp;stock::ref_view&gt;</code>: a const member function of the struct stock, that returns
+The magic is done on line 23, which defined the hashed unique index as <code>const_mem_fun&lt;stock, std::experimental::string_view, &amp;stock::ref_view&gt;</code>: a const member function of <em>stock</em>, that returns
 a string view, and can be found at <em>&amp;stock::ref_view</em>.</p>
 
 <h2 id="unorderedsetltuniqueptrlttgtgt">unordered_set&lt;unique_ptr&lt;T&gt;&gt;</h2>
@@ -194,8 +194,8 @@ struct node
 private:
   void on_error(connection&amp; conn) 
   { 
-    conn-&gt;close(&quot;bye bye&quot;);
-	  _connections.erase(&amp;conn); // won&#39;t compile: Key is a unique_ptr&lt;connection&gt;, not a connection*
+    conn.close(&quot;bye bye&quot;);
+    _connections.erase(&amp;conn); // won&#39;t compile: Key is a unique_ptr&lt;connection&gt;, not a connection*
   }
   
   std::unordered_set&lt;std::unique_ptr&lt;connection&gt;&gt; _connections;
@@ -215,13 +215,30 @@ and does not share <em>connection</em> ; otherwise it could simply use a <em>std
 
 <p>Boost.MultiIndex allows you here to store unique_ptr while being able to access it from raw pointers:</p>
 
-<noscript><pre>using connection_ptr = std::unique_ptr&lt;connection&gt;;
-using connections = multi_index_container&lt;
-  connection_ptr,
-  indexed_by&lt;
-    hashed_unique&lt;const_mem_fun&lt;connection_ptr, connection*, &amp;connection_ptr::get&gt;&gt;
-  &gt;
-&gt;;</pre></noscript>
+<noscript><pre>struct node
+{
+  // ...
+
+private:
+  void on_error(connection&amp; conn) 
+  { 
+    conn.close(&quot;bye bye&quot;);
+    _connections.erase(&amp;conn); // this line now builds!
+  }
+  
+  using connection_ptr = std::unique_ptr&lt;connection&gt;;
+
+  using connections = multi_index_container&lt;
+    connection_ptr,
+    indexed_by&lt;
+      hashed_unique&lt;
+        const_mem_fun&lt;connection_ptr, connection*, &amp;connection_ptr::get&gt;
+      &gt;
+    &gt;
+  &gt;;
+  
+  connections _connections;
+};</pre></noscript>
 <script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=boost_mic_unique_ptr.cc"> </script>
 
 <p><br /></p>
