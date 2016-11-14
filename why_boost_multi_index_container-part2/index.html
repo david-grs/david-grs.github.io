@@ -120,6 +120,7 @@ struct message_handler
   void receive(const char* buffer, size_t size)  
   {
     // no choice here, lookup has to be on std::string
+    // a std::string is constructed: memory allocation + bytes copy
     auto it = _stocks.find({buffer, size}); 
     // ...
   }
@@ -128,29 +129,23 @@ private:
   std::unordered_map&lt;std::string, stock&gt; _stocks;
 };
 </pre></noscript>
-<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup_string.cc"> </script>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup_unordered_map_string.cc"> </script>
 
 <p><br />
 One would say that you could simply convert your string to <em>std::string</em> before the lookup. However this might not be acceptable from a performance point of view, as it will perform a memory allocation. 
 Nowadays, many STL implementations use “small string optimization* (SSO) — up to 15 bytes with g++ 6.2 and 22 chars with clang 3.9 — in order to avoid the memory allocation. Bytes are still 
-copied though, and the performance of your system heavily relies in implementation details. </p>
+copied though, and the performance of your system heavily relies on implementation details. </p>
 
 <p>The solution here is to use C++17’s <a href="http://en.cppreference.com/w/cpp/experimental/basic_string_view"><em>std::string_view</em></a>. 
 This is not possible with standard containers, though: with <em>std::unordered_map</em> and <em>std::unordered_set</em>, you cannot query on another type than <em>Key</em> — and using a <em>std::unordered_map&lt;std::string_view, X&gt;</em> 
-is a bad choice, for number of reasons I explain in the <a href="#appendix">appendix</a>.</p>
+is a bad choice, for a number of reasons I explain in the <a href="#appendix">appendix</a>.</p>
 
 <p>Easy task with Boost.MultiIndex: simlpy add a method to return a string view and use it as index!</p>
 
 <noscript><pre>struct stock
 {
-  std::experimental::string_view ref_view() const 
-  { 
-    return ref;
-  }
-  
-  std::string ref;
-  double price;
-  int volume;
+  std::experimental::string_view ref_view() const { return ref; }
+  // same attributes as before
 };
 
 
@@ -158,9 +153,9 @@ struct message_handler
 {
   void receive(const char* buffer, size_t size)  
   {
-    // no memory alloc, no copy
+    // no memory allocation, no copy!
     std::experimental::string_view ref_view(buffer, size);
-    auto it = _stocks.find(ref_view);  
+    auto it = _stocks.find(ref_view);
     // ...
   }
 
@@ -169,16 +164,17 @@ private:
     stock,
     indexed_by&lt;
       hashed_unique&lt;
-        tag&lt;by_reference_view&gt;,
         const_mem_fun&lt;stock, std::experimental::string_view, &amp;stock::ref_view&gt;,
         std::hash&lt;std::experimental::string_view&gt;
       &gt;
     &gt;
   &gt; _stocks;
 };</pre></noscript>
-<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup_string_view.cc"> </script>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup_mic_string_view.cc"> </script>
 
-<p><br /></p>
+<p><br />
+The magic is done on line 23, which defined the hashed unique index as <code>const_mem_fun&lt;stock, std::experimental::string_view, &amp;stock::ref_view&gt;</code>: a const member function of the struct stock, that returns
+a string view, and can be found at <em>&amp;stock::ref_view</em>.</p>
 
 <h2 id="unorderedsetltuniqueptrlttgtgt">unordered_set&lt;unique_ptr&lt;T&gt;&gt;</h2>
 <p>Keeping a set of <em>unique_ptr&lt;T&gt;</em> is less common, but sometimes convenient. Such pattern can be used if a class owns a collection of polymorphic <em>T</em>, where this owner class does not 
@@ -207,14 +203,14 @@ private:
 <script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=unordered_set_unique_ptr.cc"> </script>
 
 <p><br />
-Note: <em>on_error</em> is private. If it would be public, this would be a poor API, as the client code would have a dangling reference the line right after the call to <em>node::on_error</em>. <em>node</em> owns 
-and does not share <em>connection</em> ; if this would be the case, we could simply use a <em>std::unordered_set&lt;std::shared_ptr&lt;T&gt;&gt;</em>.</p>
+Note: <em>on_error</em> is private. If it was public, this would be a poor API, as the client code would have a dangling reference the line right after the call to <em>node::on_error</em>. <em>node</em> owns 
+and does not share <em>connection</em> ; otherwise it could simply use a <em>std::unordered_set&lt;std::shared_ptr&lt;T&gt;&gt;</em>.</p>
 
 <p>There are a few ways to solve this with unordered STL containers, but…</p>
 
 <ol>
   <li><code>std::unordered_set&lt;connection*&gt;</code>: you lose the RAII</li>
-  <li><code>std::unordered_map&lt;connection*, std::unique_ptr&lt;connection&gt;&gt;</code>: don’t your eyes bleed?</li>
+  <li><code>std::unordered_map&lt;connection*, std::unique_ptr&lt;connection&gt;&gt;</code>: ugly and under-performant solution</li>
 </ol>
 
 <p>Boost.MultiIndex allows you here to store unique_ptr while being able to access it from raw pointers:</p>
