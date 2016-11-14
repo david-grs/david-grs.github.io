@@ -206,14 +206,15 @@ private:
 };</pre></noscript>
 <script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=unordered_set_unique_ptr.cc"> </script>
 
-<p>Note: <em>on_error</em> is private. If it would be public, this would be a poor API, as the client code would have a dangling reference the line right after the call to <em>node::on_error</em>. <em>node</em> owns 
+<p><br />
+Note: <em>on_error</em> is private. If it would be public, this would be a poor API, as the client code would have a dangling reference the line right after the call to <em>node::on_error</em>. <em>node</em> owns 
 and does not share <em>connection</em> ; if this would be the case, we could simply use a <em>std::unordered_set&lt;std::shared_ptr&lt;T&gt;&gt;</em>.</p>
 
 <p>There are a few ways to solve this with unordered STL containers, but…</p>
 
 <ol>
-  <li>with a <em>std::unordered_set&lt;connection*&gt;</em>, you lose the RAII</li>
-  <li><em>std::unordered_map&lt;connection*, std::unique_ptr&lt;connection&gt;&gt;</em>: don’t your eyes bleed?</li>
+  <li><code>std::unordered_set&lt;connection*&gt;</code>: you lose the RAII</li>
+  <li><code>std::unordered_map&lt;connection*, std::unique_ptr&lt;connection&gt;&gt;</code>: don’t your eyes bleed?</li>
 </ol>
 
 <p>Boost.MultiIndex allows you here to store unique_ptr while being able to access it from raw pointers:</p>
@@ -226,6 +227,8 @@ using connections = multi_index_container&lt;
   &gt;
 &gt;;</pre></noscript>
 <script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=boost_mic_unique_ptr.cc"> </script>
+
+<p><br /></p>
 
 <h2 id="a-nameappendixaappendix"><a name="appendix"></a>Appendix</h2>
 <p><br /></p>
@@ -264,9 +267,10 @@ acceptable scenario in my mind would be if <em>X</em> owns the viewed string as 
   <li>is wrong for the same reason</li>
   <li>is wrong because there is no guarantee on the order of evaluation of arguments, thus <em>x</em> could be moved before <em>x.str</em> is evaluated, resulting in the construction of a string view that points to some undefined memory area</li>
   <li>
-    <p>is correct: we consrtruct the view, and move <em>x</em></p>
+    <p>is correct: we construct the view, and move <em>x</em></p>
   </li>
 </ol>
+
 
         </section>
         <footer class="post-footer">
