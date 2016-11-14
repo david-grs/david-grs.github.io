@@ -128,7 +128,7 @@ private:
   std::unordered_map&lt;std::string, stock&gt; _stocks;
 };
 </pre></noscript>
-<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup.cc"> </script>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup_string.cc"> </script>
 
 <p><br />
 One would say that you could simply convert your string to <em>std::string</em> before the lookup. However this might not be acceptable from a performance point of view, as it will perform a memory allocation. 
@@ -176,9 +176,56 @@ private:
     &gt;
   &gt; _stocks;
 };</pre></noscript>
-<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup_mic.cc"> </script>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup_string_view.cc"> </script>
 
 <p><br /></p>
+
+<h2 id="unorderedsetltuniqueptrlttgtgt">unordered_set&lt;unique_ptr&lt;T&gt;&gt;</h2>
+<p>Keeping a set of <em>unique_ptr&lt;T&gt;</em> is less common, but sometimes convenient. Such pattern can be used if a class owns a collection of polymorphic <em>T</em>, where this owner class does not 
+know anything about the concrete type.</p>
+
+<noscript><pre>struct connection
+{
+  virtual ~connection() =default;
+  
+  virtual void close(const std::string&amp; reason) =0;
+};
+ 
+struct node
+{
+  void new_connection(const parameters&amp; params) { ... }
+
+private:
+  void on_error(connection&amp; conn) 
+  { 
+    conn-&gt;close(&quot;bye bye&quot;);
+	  _connections.erase(&amp;conn); // won&#39;t compile: Key is a unique_ptr&lt;connection&gt;, not a connection*
+  }
+  
+  std::unordered_set&lt;std::unique_ptr&lt;connection&gt;&gt; _connections;
+};</pre></noscript>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=unordered_set_unique_ptr.cc"> </script>
+
+<p>Note: <em>on_error</em> is private. If it would be public, this would be a poor API, as the client code would have a dangling reference the line right after the call to <em>node::on_error</em>. <em>node</em> owns 
+and does not share <em>connection</em> ; if this would be the case, we could simply use a <em>std::unordered_set&lt;std::shared_ptr&lt;T&gt;&gt;</em>.</p>
+
+<p>There are a few ways to solve this with unordered STL containers, but…</p>
+
+<ol>
+  <li>with a <em>std::unordered_set&lt;connection*&gt;</em>, you lose the RAII</li>
+  <li><em>std::unordered_map&lt;connection*, std::unique_ptr&lt;connection&gt;&gt;</em>: don’t your eyes bleed?</li>
+</ol>
+
+<p>Boost.MultiIndex allows you here to store unique_ptr while being able to access it from raw pointers:</p>
+
+<noscript><pre>using connection_ptr = std::unique_ptr&lt;connection&gt;;
+using connections = multi_index_container&lt;
+  connection_ptr,
+  indexed_by&lt;
+    hashed_unique&lt;const_mem_fun&lt;connection_ptr, connection*, &amp;connection_ptr::get&gt;&gt;
+  &gt;
+&gt;;</pre></noscript>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=boost_mic_unique_ptr.cc"> </script>
 
 <h2 id="a-nameappendixaappendix"><a name="appendix"></a>Appendix</h2>
 <p><br /></p>
@@ -220,7 +267,6 @@ acceptable scenario in my mind would be if <em>X</em> owns the viewed string as 
     <p>is correct: we consrtruct the view, and move <em>x</em></p>
   </li>
 </ol>
-
 
         </section>
         <footer class="post-footer">
