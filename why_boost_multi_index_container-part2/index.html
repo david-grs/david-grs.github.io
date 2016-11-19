@@ -244,6 +244,100 @@ private:
 
 <p><br /></p>
 
+<h2 id="composite-keys">composite keys</h2>
+<p>Composite keys is another quite common pattern when storing objects into associative containers. As the name implies, it allows to add an index composed by multiple fields. Let’s take a quick example.</p>
+
+<noscript><pre>struct session
+{
+  session(const std::string&amp; username, const std::string&amp; hostname) :
+      _username(username),
+      _hostname(hostname)
+  {
+    // ... 
+  }
+
+  const std::string&amp; username() const { return _username; } 
+  const std::string&amp; hostname() const { return _hostname; } 
+  
+private:
+  std::string _username;
+  std::string _hostname;
+
+  // more attributes ... 
+  std::chrono::time_point&lt;std::chrono::system_clock&gt; _started_time;
+  std::vector&lt;process&gt; _processes;
+};</pre></noscript>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=session.h"> </script>
+
+<p><br />
+This class represents a session of a user on a particular machine. A user can only log once on a host, which allows us to uniquely identify a session by the association
+of the <em>username</em> and the <em>hostname</em>.</p>
+
+<p>What are our options to do that with standard containers?</p>
+
+<ol>
+  <li>
+    <p>The most straightforward solution is to use a <code>std::unordered_map&lt;std::pair&lt;std::string, std::string&gt;, session&gt;</code>, as you don’t have to provide any custom 
+<em>std::hash</em> nor <em>operator==</em> implementations. I see a lot of problems with this solution though: it is bad from a performance point of view, because it uses four <em>std::string</em> instances
+while we only need two and it allocates two <em>std::string</em> on each lookup. Also, the code is not very elegant and is error prone as you don’t know if <em>username</em> is the 
+first element of the pair or the second.</p>
+  </li>
+  <li>
+    <p>A better way to do it in my opinion is to have a <code>std::unordered_map&lt;session_id, session&gt;</code>, with <em>session_id</em> a <em>struct</em> with two <em>std::string</em>. This gets rid of a few drawbacks that we have in the solution 1, but requires a 
+<em>std::hash</em> specialization and <em>operator==</em> definition. Not dramatic, but this raises more questions: how to implement a <em>good</em> hash function that takes two <em>std::string</em> as input?
+I usually always use <a href="http://www.boost.org/doc/libs/1_62_0/doc/html/hash/combine.html">Boost.Functional/Hash</a> for that, but not every application can support Boost as a dependency. Apparently, 
+a good start would be to use <a href="http://stackoverflow.com/questions/17016175/c-unordered-map-using-a-custom-class-type-as-the-key">a xor with some bit shifting</a> on the two <em>std::string</em> hashes, but 
+who knows if this is really good?</p>
+  </li>
+  <li>
+    <p>A last solution I could think of is to use <code>std::unordered_set&lt;session&gt;</code>, but it is still far from ideal: you have all the problems cited in the solution 2. The only advantage is that
+you’re using less memory as you don’t have the two additional <em>std::string</em> instances as key… but now you have to <em>const_cast</em> all the time your stored objects, which can be annoying or simply not
+desirable depending on your API. </p>
+  </li>
+</ol>
+
+<p>As you can see, there is no simple and straightforward solution to that (simple!) problem. Here is what is looks like with Boost.MultiIndex:</p>
+
+<noscript><pre>boost::multi_index_container&lt;
+  session,
+  indexed_by&lt;
+    hashed_unique&lt;
+      composite_key&lt;
+        session,
+        const_mem_fun&lt;session, std::string, &amp;session::username&gt;,
+        const_mem_fun&lt;session, std::string, &amp;session::hostname&gt;
+      &gt;
+    &gt;
+  &gt;
+&gt; sessions;
+
+sessions.insert({&quot;foobar&quot;, &quot;localhost&quot;});
+
+auto it = sessions.find(boost::make_tuple(&quot;foobar&quot;, &quot;localhost&quot;));
+std::cout &lt;&lt; it-&gt;user_name &lt;&lt; std::endl;</pre></noscript>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=boost_mic_composite_key.cc"> </script>
+
+<p>As I wrote in the first paragraph, building <em>std::string</em> to do a lookup take a significant time. If you care enough about performance, here is the solution that is going to squeeze the
+last bits and nanoseconds: </p>
+
+<noscript><pre>boost::multi_index_container&lt;
+  session,
+  indexed_by&lt;
+    hashed_unique&lt;
+      composite_key&lt;
+        session,
+        const_mem_fun&lt;session, std::experimental::string_view, &amp;session::username&gt;,
+        const_mem_fun&lt;session, std::experimental::string_view, &amp;session::hostname&gt;
+      &gt;
+      composite_key_hash&lt;
+        std::hash&lt;std::experimental::string_view&gt;,
+        std::hash&lt;std::experimental::string_view&gt;
+      &gt;
+    &gt;
+  &gt;
+&gt; sessions;</pre></noscript>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=boost_mic_composite_key_view.cc"> </script>
+
 <h2 id="a-nameappendixaappendix"><a name="appendix"></a>Appendix</h2>
 <p><br /></p>
 
@@ -278,99 +372,6 @@ acceptable scenario in my mind would be if <em>X</em> owns the viewed string as 
   <li>is wrong for the same reason</li>
   <li>is wrong because there is no guarantee on the order of evaluation of arguments, thus <em>x</em> could be moved before <em>x.str</em> is evaluated, resulting in the construction of a string view that points to some undefined memory area</li>
   <li>is correct: we construct the view, and move <em>x</em></li>
-</ol>
-
-<h2 id="composite-keys">composite keys</h2>
-<p>Another feature that I like to use in Boost.MultiIndex is composite key. As the name implies, it allows to add an index composed by multiple fields. Let’s take a quick example.</p>
-
-<p>struct session
-{
-  session(const std::string&amp; username, const std::string&amp; hostname) :
-      _username(username),
-      _hostname(hostname)
-  {
-    // …
-  }</p>
-
-<p>std::string _username;
-  std::string _hostname;</p>
-
-<p>// more attributes …
-  std::chrono::time_point<std::chrono::system_clock> _started_time;
-  std::vector<process> _processes;
-};</process></std::chrono::system_clock></p>
-
-<p>This class represents a session of a user on a particular host. On our system, a user can only log once on a host. Each query contains these two fields as a 
-unique key to identify a particular session.</p>
-
-<p>What are our solutions?</p>
-
-<noscript><pre>namespace tags
-{
-  struct by_full_name {};
-}
-
-using employees = boost::multi_index_container&lt;
-  employee,
-  indexed_by&lt;
-    hashed_unique&lt;
-      tag&lt;by_full_name&gt;,
-      composite_key&lt;
-        employee,
-        member&lt;employee, std::string, &amp;employee::first_name&gt;,
-        member&lt;employee, std::string, &amp;employee::last_name&gt;
-      &gt;
-    &gt;
-  &gt;
-&gt;;</pre></noscript>
-<script src="https://gist.github.com/david-grs/b95f77dbac91edf270befedefcf9b700.js?file=mic_employee_full_name.cc"> </script>
-
-<p>No need to declare any <em>operator==</em> or specialization of <em>std::hash</em>, they are generated by the container. When a lookup has to be done, we
-use Boost.Tuple to create the composite key:</p>
-
-<noscript><pre>employees m;
-
-m.insert({&quot;john&quot;, &quot;doe&quot;, 21, 2000.0});
-    
-auto&amp;&amp; view = m.get&lt;by_full_name&gt;();
-
-auto it = view.find(boost::make_tuple(&quot;john&quot;, &quot;doe&quot;));
-std::cout &lt;&lt; it-&gt;first_name &lt;&lt; std::endl;</pre></noscript>
-<script src="https://gist.github.com/david-grs/b95f77dbac91edf270befedefcf9b700.js?file=mic_employee_full_name_lookup.cc"> </script>
-
-<ol>
-  <li>
-    <p>same example, lets imagine now that the actual key on your employee is a full name. </p>
-
-    <p>jjust replace</p>
-
-    <pre><code>     BOOST_MULTI_INDEX_MEMBER(employee, std::string, first_name)
-</code></pre>
-
-    <p>by</p>
-
-    <pre><code>   composite_key&lt;
-     employee,
-     BOOST_MULTI_INDEX_MEMBER(employee, std::string, first_name),
-     BOOST_MULTI_INDEX_MEMBER(employee, std::string, last_name)
-   &gt;
-</code></pre>
-
-    <p>on the other side, with map, things are now much complicated….. :</p>
-
-    <p>what can you do?
-     1. std::map&lt;std::pair&lt;std::string, std::string&gt;, employee&gt; m;
-        -&gt; this is the quickest and easiest solution, as you don’t have to deal with operator&lt; or == + hash. the problem is: it is unclear, error prone (which field is the first?), and ugly.</p>
-
-    <pre><code>    it would be a bit better with : using FullName = std::pair&lt;std::string, std::string&gt; but still.
-
- 2. std::map&lt;full_name, employee&gt;: the least bad solution here imho if you don;t caere about performance, but you have to write operator&lt; /==/hash. 
-
- 3. std::set&lt;employee, employee_by_name&gt; is a solution too, but now you have to const_cast all the time (as employee is the key), and also be very careful on when you do it... you still have to write an operator&lt; / == / hash though.
-</code></pre>
-
-    <p>so in any cases, you have to write quite some code, so here, we see that the small overhead we had with boost.mic is already gone (with all the benefits we have from it for free!)</p>
-  </li>
 </ol>
 
 
