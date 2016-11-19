@@ -106,6 +106,7 @@ provided by the standard library.</p>
 <ul>
   <li>when reading from shared memory, a socket, or a device, you get a <em>const char*</em></li>
   <li>when using APIs that provide their own string implementation, like Qt: even if your entire codebase is using <em>std::string</em>, you will have some boundary zones where both types are used</li>
+  <li>when using third party libraries: you get most of the time a <em>const char *</em> or <em>std::string</em></li>
 </ul>
 
 <noscript><pre>struct stock
