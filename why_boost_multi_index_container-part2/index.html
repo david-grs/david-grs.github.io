@@ -109,8 +109,30 @@ provided by the standard library.</p>
   <li>when using third party libraries: you get most of the time a <em>const char *</em> or <em>std::string</em></li>
 </ul>
 
-<p>true<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup_unordered_map_string.cc"> </script> 
-<br />
+<noscript><pre>struct stock
+{
+  std::string ref;
+  double price;
+  int volume;
+};
+
+struct message_handler
+{
+  void receive(const char* buffer, size_t size)  
+  {
+    // no choice here, lookup has to be on std::string
+    // a std::string is constructed: memory allocation + bytes copy
+    auto it = _stocks.find({buffer, size}); 
+    // ...
+  }
+
+private:
+  std::unordered_map&lt;std::string, stock&gt; _stocks;
+};
+</pre></noscript>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup_unordered_map_string.cc"> </script>
+
+<p><br />
 One would say that you could simply convert your string to <em>std::string</em> before the lookup. However this might not be acceptable from a performance point of view, as it will perform a memory allocation. 
 Nowadays, many STL implementations use “small string optimization* (SSO) — up to 15 bytes with g++ 6.2 and 22 chars with clang 3.9 — in order to avoid the memory allocation. Bytes are still 
 copied though, and the performance of your system heavily relies on implementation details. </p>
@@ -121,8 +143,37 @@ is a bad choice, for a number of reasons I explain in the <a href="#appendix">ap
 
 <p>Easy task with Boost.MultiIndex: simlpy add a method that returns a string view and use it as index!</p>
 
-<p>true<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup_mic_string_view.cc"> </script> 
-<br />
+<noscript><pre>struct stock
+{
+  std::experimental::string_view ref_view() const { return ref; }
+  // same attributes as before
+};
+
+
+struct message_handler
+{
+  void receive(const char* buffer, size_t size)  
+  {
+    // no memory allocation, no copy!
+    std::experimental::string_view ref_view(buffer, size);
+    auto it = _stocks.find(ref_view);
+    // ...
+  }
+
+private:
+  boost::multi_index_container&lt;
+    stock,
+    indexed_by&lt;
+      hashed_unique&lt;
+        const_mem_fun&lt;stock, std::experimental::string_view, &amp;stock::ref_view&gt;,
+        std::hash&lt;std::experimental::string_view&gt;
+      &gt;
+    &gt;
+  &gt; _stocks;
+};</pre></noscript>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup_mic_string_view.cc"> </script>
+
+<p><br />
 The magic is done on line 23, which defined the hashed unique index as <code>const_mem_fun&lt;stock, std::experimental::string_view, &amp;stock::ref_view&gt;</code>: a const member function of <em>stock</em>, that returns
 a string view, and can be found at <em>&amp;stock::ref_view</em>.</p>
 
@@ -130,8 +181,29 @@ a string view, and can be found at <em>&amp;stock::ref_view</em>.</p>
 <p>Keeping a set of <em>unique_ptr&lt;T&gt;</em> is less common, but sometimes convenient. Such pattern can be used if a class owns a collection of polymorphic <em>T</em>, where this owner class does not 
 know anything about the concrete type.</p>
 
-<p>true<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=unordered_set_unique_ptr.cc"> </script> 
-<br />
+<noscript><pre>struct connection
+{
+  virtual ~connection() =default;
+  
+  virtual void close(const std::string&amp; reason) =0;
+};
+ 
+struct node
+{
+  void new_connection(const parameters&amp; params) { ... }
+
+private:
+  void on_error(connection&amp; conn) 
+  { 
+    conn.close(&quot;bye bye&quot;);
+    _connections.erase(&amp;conn); // won&#39;t compile: Key is a unique_ptr&lt;connection&gt;, not a connection*
+  }
+  
+  std::unordered_set&lt;std::unique_ptr&lt;connection&gt;&gt; _connections;
+};</pre></noscript>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=unordered_set_unique_ptr.cc"> </script>
+
+<p><br />
 Note: <em>on_error</em> is private. If it was public, this would be a poor API, as the client code would have a dangling reference the line right after the call to <em>node::on_error</em>. <em>node</em> owns 
 and does not share <em>connection</em> ; otherwise it could simply use a <em>std::unordered_set&lt;std::shared_ptr&lt;T&gt;&gt;</em>.</p>
 
@@ -144,14 +216,60 @@ and does not share <em>connection</em> ; otherwise it could simply use a <em>std
 
 <p>Boost.MultiIndex allows you here to store unique_ptr while being able to access it from raw pointers:</p>
 
-<p>true<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=boost_mic_unique_ptr.cc"> </script> 
-<br /></p>
+<noscript><pre>struct node
+{
+  // ...
+
+private:
+  void on_error(connection&amp; conn) 
+  { 
+    conn.close(&quot;bye bye&quot;);
+    _connections.erase(&amp;conn); // this line now builds!
+  }
+  
+  using connection_ptr = std::unique_ptr&lt;connection&gt;;
+
+  using connections = multi_index_container&lt;
+    connection_ptr,
+    indexed_by&lt;
+      hashed_unique&lt;
+        const_mem_fun&lt;connection_ptr, connection*, &amp;connection_ptr::get&gt;
+      &gt;
+    &gt;
+  &gt;;
+  
+  connections _connections;
+};</pre></noscript>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=boost_mic_unique_ptr.cc"> </script>
+
+<p><br /></p>
 
 <h2 id="composite-keys">composite keys</h2>
 <p>Composite keys is another quite common pattern when storing objects into associative containers. As the name implies, it allows to add an index composed by multiple fields. Let’s take a quick example.</p>
 
-<p>true<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=session.h"> </script>
-<br />
+<noscript><pre>struct session
+{
+  session(const std::string&amp; username, const std::string&amp; hostname) :
+      _username(username),
+      _hostname(hostname)
+  {
+    // ... 
+  }
+
+  const std::string&amp; username() const { return _username; } 
+  const std::string&amp; hostname() const { return _hostname; } 
+  
+private:
+  std::string _username;
+  std::string _hostname;
+
+  // more attributes ... 
+  std::chrono::time_point&lt;std::chrono::system_clock&gt; _started_time;
+  std::vector&lt;process&gt; _processes;
+};</pre></noscript>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=session.h"> </script>
+
+<p><br />
 This class represents a session of a user on a particular machine. A user can only log once on a host, which allows us to uniquely identify a session by the association
 of the <em>username</em> and the <em>hostname</em>.</p>
 
@@ -180,12 +298,45 @@ desirable depending on your API. </p>
 
 <p>As you can see, there is no simple and straightforward solution to that (simple!) problem. Here is what is looks like with Boost.MultiIndex:</p>
 
-<p>true<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=boost_mic_composite_key.cc"> </script></p>
+<noscript><pre>boost::multi_index_container&lt;
+  session,
+  indexed_by&lt;
+    hashed_unique&lt;
+      composite_key&lt;
+        session,
+        const_mem_fun&lt;session, std::string, &amp;session::username&gt;,
+        const_mem_fun&lt;session, std::string, &amp;session::hostname&gt;
+      &gt;
+    &gt;
+  &gt;
+&gt; sessions;
+
+sessions.insert({&quot;foobar&quot;, &quot;localhost&quot;});
+
+auto it = sessions.find(boost::make_tuple(&quot;foobar&quot;, &quot;localhost&quot;));
+std::cout &lt;&lt; it-&gt;user_name &lt;&lt; std::endl;</pre></noscript>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=boost_mic_composite_key.cc"> </script>
 
 <p>As I wrote in the first paragraph, building <em>std::string</em> to do a lookup take a significant time. If you care enough about performance, here is the solution that is going to squeeze the
 last bits and nanoseconds: </p>
 
-<p>true<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=boost_mic_composite_key_view.cc"> </script></p>
+<noscript><pre>boost::multi_index_container&lt;
+  session,
+  indexed_by&lt;
+    hashed_unique&lt;
+      composite_key&lt;
+        session,
+        const_mem_fun&lt;session, std::experimental::string_view, &amp;session::username&gt;,
+        const_mem_fun&lt;session, std::experimental::string_view, &amp;session::hostname&gt;
+      &gt;
+      composite_key_hash&lt;
+        std::hash&lt;std::experimental::string_view&gt;,
+        std::hash&lt;std::experimental::string_view&gt;
+      &gt;
+    &gt;
+  &gt;
+&gt; sessions;</pre></noscript>
+<script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=boost_mic_composite_key_view.cc"> </script>
 
 <h2 id="a-nameappendixaappendix"><a name="appendix"></a>Appendix</h2>
 <p><br /></p>
