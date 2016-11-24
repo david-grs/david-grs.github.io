@@ -6,9 +6,313 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Thu, 03 Nov 2016 21:28:01 +0100</pubDate>
-    <lastBuildDate>Thu, 03 Nov 2016 21:28:01 +0100</lastBuildDate>
+    <pubDate>Thu, 24 Nov 2016 13:51:20 +0100</pubDate>
+    <lastBuildDate>Thu, 24 Nov 2016 13:51:20 +0100</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
+    
+      <item>
+        <title>Why you should use Boost.MultiIndex (Part II)</title>
+        <description>&lt;p&gt;Last week, I posted the &lt;a href=&quot;/why_boost_multi_index_container-part1/&quot;&gt;first part&lt;/a&gt; of this article, where I explained the advantages 
+of Boost.MultiIndex over the standard containers when you need to have multiple views on a set of data.&lt;/p&gt;
+
+&lt;p&gt;In this second part, I would like to talk about the benefits you can get from using Boost.MultiIndex as a single-index hash table, as a replacement
+of &lt;em&gt;std::unordered_map&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;One interesting and powerful aspect of Boost.MultiIndex is that it allows you to add an index of type &lt;em&gt;T&lt;/em&gt;, where &lt;em&gt;T&lt;/em&gt; is different from the stored type. And 
+it is more frequent and useful that you could think.&lt;/p&gt;
+
+&lt;h2 id=&quot;stdstring-as-a-key&quot;&gt;std::string as a key&lt;/h2&gt;
+&lt;p&gt;Who never used a &lt;em&gt;std::unordered_map&amp;lt;std::string, X&amp;gt;&lt;/em&gt;? This is the most straightforward 
+way to lookup for an object with a string: it is simple, relatively fast, and convenient as &lt;em&gt;std::hash&amp;lt;std::string&amp;gt;&lt;/em&gt; is 
+provided by the standard library.&lt;/p&gt;
+
+&lt;p&gt;However, what if you get another string type as input for your lookup? I already found myself in this situation multiple times:  &lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;when reading from shared memory, a socket, or a device, you get a &lt;em&gt;const char*&lt;/em&gt;&lt;/li&gt;
+  &lt;li&gt;when using APIs that provide their own string implementation, like Qt: even if your entire codebase is using &lt;em&gt;std::string&lt;/em&gt;, you will have some boundary zones where both types are used&lt;/li&gt;
+  &lt;li&gt;when using third party libraries: you get most of the time a &lt;em&gt;const char *&lt;/em&gt; or &lt;em&gt;std::string&lt;/em&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;noscript&gt;&lt;pre&gt;struct stock
+{
+  std::string ref;
+  double price;
+  int volume;
+};
+
+struct message_handler
+{
+  void receive(const char* buffer, size_t size)  
+  {
+    // no choice here, lookup has to be on std::string
+    // a std::string is constructed: memory allocation + bytes copy
+    auto it = _stocks.find({buffer, size}); 
+    // ...
+  }
+
+private:
+  std::unordered_map&amp;lt;std::string, stock&amp;gt; _stocks;
+};
+&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup_unordered_map_string.cc&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+One would say that you could simply convert your string to &lt;em&gt;std::string&lt;/em&gt; before the lookup. However this might not be acceptable from a performance point of view, as it will perform a memory allocation. 
+Nowadays, many STL implementations use “small string optimization* (SSO) — up to 15 bytes with g++ 6.2 and 22 chars with clang 3.9 — in order to avoid the memory allocation. Bytes are still 
+copied though, and the performance of your system heavily relies on implementation details. &lt;/p&gt;
+
+&lt;p&gt;The solution here is to use C++17’s &lt;a href=&quot;http://en.cppreference.com/w/cpp/experimental/basic_string_view&quot;&gt;&lt;em&gt;std::string_view&lt;/em&gt;&lt;/a&gt;. 
+This is not possible with standard containers, though: with &lt;em&gt;std::unordered_map&lt;/em&gt; and &lt;em&gt;std::unordered_set&lt;/em&gt;, you cannot query on another type than &lt;em&gt;Key&lt;/em&gt; — and using a &lt;em&gt;std::unordered_map&amp;lt;std::string_view, X&amp;gt;&lt;/em&gt; 
+is a bad choice, for a number of reasons I explain in the &lt;a href=&quot;#appendix&quot;&gt;appendix&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Easy task with Boost.MultiIndex: simlpy add a method that returns a string view and use it as index!&lt;/p&gt;
+
+&lt;noscript&gt;&lt;pre&gt;struct stock
+{
+  std::experimental::string_view ref_view() const { return ref; }
+  // same attributes as before
+};
+
+
+struct message_handler
+{
+  void receive(const char* buffer, size_t size)  
+  {
+    // no memory allocation, no copy!
+    std::experimental::string_view ref_view(buffer, size);
+    auto it = _stocks.find(ref_view);
+    // ...
+  }
+
+private:
+  boost::multi_index_container&amp;lt;
+    stock,
+    indexed_by&amp;lt;
+      hashed_unique&amp;lt;
+        const_mem_fun&amp;lt;stock, std::experimental::string_view, &amp;amp;stock::ref_view&amp;gt;,
+        std::hash&amp;lt;std::experimental::string_view&amp;gt;
+      &amp;gt;
+    &amp;gt;
+  &amp;gt; _stocks;
+};&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=lookup_mic_string_view.cc&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+The magic is done on line 23, which defined the hashed unique index as &lt;code&gt;const_mem_fun&amp;lt;stock, std::experimental::string_view, &amp;amp;stock::ref_view&amp;gt;&lt;/code&gt;: a const member function of &lt;em&gt;stock&lt;/em&gt;, that returns
+a string view, and can be found at &lt;em&gt;&amp;amp;stock::ref_view&lt;/em&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;unorderedsetltuniqueptrlttgtgt&quot;&gt;unordered_set&amp;lt;unique_ptr&amp;lt;T&amp;gt;&amp;gt;&lt;/h2&gt;
+&lt;p&gt;Keeping a set of &lt;em&gt;unique_ptr&amp;lt;T&amp;gt;&lt;/em&gt; is less common, but sometimes convenient. Such pattern can be used if a class owns a collection of polymorphic &lt;em&gt;T&lt;/em&gt;, where this owner class does not 
+know anything about the concrete type.&lt;/p&gt;
+
+&lt;noscript&gt;&lt;pre&gt;struct connection
+{
+  virtual ~connection() =default;
+  
+  virtual void close(const std::string&amp;amp; reason) =0;
+};
+ 
+struct node
+{
+  void new_connection(const parameters&amp;amp; params) { ... }
+
+private:
+  void on_error(connection&amp;amp; conn) 
+  { 
+    conn.close(&amp;quot;bye bye&amp;quot;);
+    _connections.erase(&amp;amp;conn); // won&amp;#39;t compile: Key is a unique_ptr&amp;lt;connection&amp;gt;, not a connection*
+  }
+  
+  std::unordered_set&amp;lt;std::unique_ptr&amp;lt;connection&amp;gt;&amp;gt; _connections;
+};&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=unordered_set_unique_ptr.cc&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+Note: &lt;em&gt;on_error&lt;/em&gt; is private. If it was public, this would be a poor API, as the client code would have a dangling reference the line right after the call to &lt;em&gt;node::on_error&lt;/em&gt;. &lt;em&gt;node&lt;/em&gt; owns 
+and does not share &lt;em&gt;connection&lt;/em&gt; ; otherwise it could simply use a &lt;em&gt;std::unordered_set&amp;lt;std::shared_ptr&amp;lt;T&amp;gt;&amp;gt;&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;There are a few ways to solve this with unordered STL containers, but…&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;&lt;code&gt;std::unordered_set&amp;lt;connection*&amp;gt;&lt;/code&gt;: you lose the advantages of RAII&lt;/li&gt;
+  &lt;li&gt;&lt;code&gt;std::unordered_map&amp;lt;connection*, std::unique_ptr&amp;lt;connection&amp;gt;&amp;gt;&lt;/code&gt;: ugly and under-performant solution&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Boost.MultiIndex allows you here to store unique_ptr while being able to access it from raw pointers:&lt;/p&gt;
+
+&lt;noscript&gt;&lt;pre&gt;struct node
+{
+  // ...
+
+private:
+  void on_error(connection&amp;amp; conn) 
+  { 
+    conn.close(&amp;quot;bye bye&amp;quot;);
+    _connections.erase(&amp;amp;conn); // this line now builds!
+  }
+  
+  using connection_ptr = std::unique_ptr&amp;lt;connection&amp;gt;;
+
+  using connections = multi_index_container&amp;lt;
+    connection_ptr,
+    indexed_by&amp;lt;
+      hashed_unique&amp;lt;
+        const_mem_fun&amp;lt;connection_ptr, connection*, &amp;amp;connection_ptr::get&amp;gt;
+      &amp;gt;
+    &amp;gt;
+  &amp;gt;;
+  
+  connections _connections;
+};&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=boost_mic_unique_ptr.cc&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;composite-keys&quot;&gt;composite keys&lt;/h2&gt;
+&lt;p&gt;Composite keys is another quite common pattern when storing objects into associative containers. As the name implies, it allows to add an index composed by multiple fields. Let’s take a quick example.&lt;/p&gt;
+
+&lt;noscript&gt;&lt;pre&gt;struct session
+{
+  session(const std::string&amp;amp; username, const std::string&amp;amp; hostname) :
+      _username(username),
+      _hostname(hostname)
+  {
+    // ... 
+  }
+
+  const std::string&amp;amp; username() const { return _username; } 
+  const std::string&amp;amp; hostname() const { return _hostname; } 
+  
+private:
+  std::string _username;
+  std::string _hostname;
+
+  // more attributes ... 
+  std::chrono::time_point&amp;lt;std::chrono::system_clock&amp;gt; _started_time;
+  std::vector&amp;lt;process&amp;gt; _processes;
+};&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=session.h&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+This class represents a session of a user on a particular machine. A user can only log once on a host, which allows us to uniquely identify a session by the association
+of the &lt;em&gt;username&lt;/em&gt; and the &lt;em&gt;hostname&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;What are our options to do that with standard containers?&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;The most straightforward solution is to use a &lt;code&gt;std::unordered_map&amp;lt;std::pair&amp;lt;std::string, std::string&amp;gt;, session&amp;gt;&lt;/code&gt;, as you don’t have to provide any custom 
+&lt;em&gt;std::hash&lt;/em&gt; nor &lt;em&gt;operator==&lt;/em&gt; implementations. I see a lot of problems with this solution though: it is bad from a performance point of view, because it uses four &lt;em&gt;std::string&lt;/em&gt; instances
+while we only need two and it allocates two &lt;em&gt;std::string&lt;/em&gt; on each lookup. Also, the code is not very elegant and is error prone as you don’t know if &lt;em&gt;username&lt;/em&gt; is the 
+first element of the pair or the second.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;A better way to do it in my opinion is to have a &lt;code&gt;std::unordered_map&amp;lt;session_id, session&amp;gt;&lt;/code&gt;, with &lt;em&gt;session_id&lt;/em&gt; a &lt;em&gt;struct&lt;/em&gt; with two &lt;em&gt;std::string&lt;/em&gt;. This gets rid of a few drawbacks that we have in the solution 1, but requires a 
+&lt;em&gt;std::hash&lt;/em&gt; specialization and &lt;em&gt;operator==&lt;/em&gt; definition. Not dramatic, but this raises more questions: how to implement a &lt;em&gt;good&lt;/em&gt; hash function that takes two &lt;em&gt;std::string&lt;/em&gt; as input?
+I usually use &lt;a href=&quot;http://www.boost.org/doc/libs/1_62_0/doc/html/hash/combine.html&quot;&gt;Boost.Functional/Hash&lt;/a&gt; for that, but not every application can support Boost as a dependency. Apparently, 
+a good start would be to use &lt;a href=&quot;http://stackoverflow.com/questions/17016175/c-unordered-map-using-a-custom-class-type-as-the-key&quot;&gt;a xor with some bit shifting&lt;/a&gt; on the two &lt;em&gt;std::string&lt;/em&gt; hashes, but 
+who knows if this is really good?&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;A last solution I could think of is to use &lt;code&gt;std::unordered_set&amp;lt;session&amp;gt;&lt;/code&gt;, but it is still far from ideal: you have all the problems cited in the solution 2. The only advantage is that
+you’re using less memory as you don’t have the two additional &lt;em&gt;std::string&lt;/em&gt; instances as key… but now you have to &lt;em&gt;const_cast&lt;/em&gt; all the time your stored objects, which can be annoying or simply not
+desirable depending on your API. &lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;As you can see, there is no simple and straightforward solution to that (simple!) problem. Here is what is looks like with Boost.MultiIndex:&lt;/p&gt;
+
+&lt;noscript&gt;&lt;pre&gt;boost::multi_index_container&amp;lt;
+  session,
+  indexed_by&amp;lt;
+    hashed_unique&amp;lt;
+      composite_key&amp;lt;
+        session,
+        const_mem_fun&amp;lt;session, std::string, &amp;amp;session::username&amp;gt;,
+        const_mem_fun&amp;lt;session, std::string, &amp;amp;session::hostname&amp;gt;
+      &amp;gt;
+    &amp;gt;
+  &amp;gt;
+&amp;gt; sessions;
+
+sessions.insert({&amp;quot;foobar&amp;quot;, &amp;quot;localhost&amp;quot;});
+
+auto it = sessions.find(boost::make_tuple(&amp;quot;foobar&amp;quot;, &amp;quot;localhost&amp;quot;));
+std::cout &amp;lt;&amp;lt; it-&amp;gt;user_name &amp;lt;&amp;lt; std::endl;&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=boost_mic_composite_key.cc&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+The &lt;em&gt;composite_key&lt;/em&gt; takes in this case two &lt;em&gt;const_mem_fun&lt;/em&gt; — which is the argument used to refer to const member functions. For the lookup, you will have to build a Boost.Tuple as a key.&lt;/p&gt;
+
+&lt;p&gt;As I wrote in the first paragraph, building &lt;em&gt;std::string&lt;/em&gt; to do a lookup take a significant time. If you care enough about performance, here is the solution that is going to squeeze the
+last bits and nanoseconds: &lt;/p&gt;
+
+&lt;noscript&gt;&lt;pre&gt;boost::multi_index_container&amp;lt;
+  session,
+  indexed_by&amp;lt;
+    hashed_unique&amp;lt;
+      composite_key&amp;lt;
+        session,
+        const_mem_fun&amp;lt;session, std::experimental::string_view, &amp;amp;session::username&amp;gt;,
+        const_mem_fun&amp;lt;session, std::experimental::string_view, &amp;amp;session::hostname&amp;gt;
+      &amp;gt;
+      composite_key_hash&amp;lt;
+        std::hash&amp;lt;std::experimental::string_view&amp;gt;,
+        std::hash&amp;lt;std::experimental::string_view&amp;gt;
+      &amp;gt;
+    &amp;gt;
+  &amp;gt;
+&amp;gt; sessions;&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=boost_mic_composite_key_view.cc&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+Same approach as before: the composite key is still composed by the two methods of your class, that we modify of course in order to return a &lt;em&gt;std::string_view&lt;/em&gt; and not a &lt;em&gt;std::string&lt;/em&gt; anymore. The only
+annoying bit is that we have to explicitly define the &lt;em&gt;composite_key_hash&lt;/em&gt; as Boost.MultiIndex doesn’t pick the &lt;em&gt;std::string_view&lt;/em&gt; specialization!&lt;/p&gt;
+
+&lt;h2 id=&quot;a-nameappendixaappendix&quot;&gt;&lt;a name=&quot;appendix&quot;&gt;&lt;/a&gt;Appendix&lt;/h2&gt;
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+
+  &lt;p&gt;Why using &lt;em&gt;std::unordered_map&amp;lt;std::string_view, X&amp;gt;&lt;/em&gt; is bad design choice?&lt;/p&gt;
+
+&lt;/blockquote&gt;
+
+&lt;p&gt;It is a bad design because it is fragile and error-prone. The key is &lt;em&gt;const std::string_view&lt;/em&gt;, but as it is a view, it can actually change anytime. The only
+acceptable scenario in my mind would be if &lt;em&gt;X&lt;/em&gt; owns the viewed string as &lt;em&gt;const std::string&lt;/em&gt;.
+&lt;br /&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+
+  &lt;p&gt;How do you insert an element in such container?&lt;/p&gt;
+
+&lt;/blockquote&gt;
+
+&lt;p&gt;Which one of the followings are correct?&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;&lt;code&gt;m.emplace(x.str, x)&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code&gt;std::experimental::string_view sv{x.str};&lt;/code&gt;&lt;br /&gt;
+&lt;code&gt;m.emplace(sv, x.str); &lt;/code&gt; &lt;/li&gt;
+  &lt;li&gt;&lt;code&gt;m.emplace(x.str, std::move(x));&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;code&gt;std::experimental::string_view sv{x.str};&lt;/code&gt;&lt;br /&gt;
+&lt;code&gt;m.emplace(sv, std::move(x));&lt;/code&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;is wrong because &lt;em&gt;x&lt;/em&gt; is going to be copied, while the key is pointing to &lt;em&gt;x.str&lt;/em&gt;&lt;/li&gt;
+  &lt;li&gt;is wrong for the same reason&lt;/li&gt;
+  &lt;li&gt;is wrong because there is no guarantee on the order of evaluation of arguments, thus &lt;em&gt;x&lt;/em&gt; could be moved before &lt;em&gt;x.str&lt;/em&gt; is evaluated, resulting in the construction of a string view that points to some undefined memory area&lt;/li&gt;
+  &lt;li&gt;is correct: we construct the view, and move &lt;em&gt;x&lt;/em&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+</description>
+        <pubDate>Tue, 15 Nov 2016 22:04:00 +0100</pubDate>
+        <link>http://david-grs.github.io/why_boost_multi_index_container-part2</link>
+        <guid isPermaLink="true">http://david-grs.github.io/why_boost_multi_index_container-part2</guid>
+        
+        
+      </item>
     
       <item>
         <title>Why you should use Boost.MultiIndex (Part I)</title>
@@ -56,9 +360,9 @@ using sorted_ints = boost::multi_index_container&amp;lt;
       member&amp;lt;A, int, &amp;amp;A::x&amp;gt;,  // ordered on x... 
       std::less&amp;lt;int&amp;gt;          // ... by ascending order
     &amp;gt;,
-    ordered_unique&amp;lt;      // second view
+    ordered_unique&amp;lt;           // second view
       tag&amp;lt;tags::y_asc&amp;gt;,       // tag used to access the view
-      member&amp;lt;A, int, &amp;amp;A::x&amp;gt;,  // ordered on y... 
+      member&amp;lt;A, int, &amp;amp;A::y&amp;gt;,  // ordered on y... 
       std::less&amp;lt;int&amp;gt;          // ... by ascending order
     &amp;gt;
   &amp;gt;

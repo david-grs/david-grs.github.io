@@ -317,6 +317,9 @@ auto it = sessions.find(boost::make_tuple(&quot;foobar&quot;, &quot;localhost&qu
 std::cout &lt;&lt; it-&gt;user_name &lt;&lt; std::endl;</pre></noscript>
 <script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=boost_mic_composite_key.cc"> </script>
 
+<p><br />
+The <em>composite_key</em> takes in this case two <em>const_mem_fun</em> — which is the argument used to refer to const member functions. For the lookup, you will have to build a Boost.Tuple as a key.</p>
+
 <p>As I wrote in the first paragraph, building <em>std::string</em> to do a lookup take a significant time. If you care enough about performance, here is the solution that is going to squeeze the
 last bits and nanoseconds: </p>
 
@@ -337,6 +340,10 @@ last bits and nanoseconds: </p>
   &gt;
 &gt; sessions;</pre></noscript>
 <script src="https://gist.github.com/david-grs/1f17bafa94b9596ec375532836fccd12.js?file=boost_mic_composite_key_view.cc"> </script>
+
+<p><br />
+Same approach as before: the composite key is still composed by the two methods of your class, that we modify of course in order to return a <em>std::string_view</em> and not a <em>std::string</em> anymore. The only
+annoying bit is that we have to explicitly define the <em>composite_key_hash</em> as Boost.MultiIndex doesn’t pick the <em>std::string_view</em> specialization!</p>
 
 <h2 id="a-nameappendixaappendix"><a name="appendix"></a>Appendix</h2>
 <p><br /></p>
