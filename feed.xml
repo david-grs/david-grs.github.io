@@ -6,13 +6,13 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Thu, 24 Nov 2016 13:51:20 +0100</pubDate>
-    <lastBuildDate>Thu, 24 Nov 2016 13:51:20 +0100</lastBuildDate>
+    <pubDate>Thu, 24 Nov 2016 13:54:28 +0100</pubDate>
+    <lastBuildDate>Thu, 24 Nov 2016 13:54:28 +0100</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
     
       <item>
         <title>Why you should use Boost.MultiIndex (Part II)</title>
-        <description>&lt;p&gt;Last week, I posted the &lt;a href=&quot;/why_boost_multi_index_container-part1/&quot;&gt;first part&lt;/a&gt; of this article, where I explained the advantages 
+        <description>&lt;p&gt;A few weeks ago, I posted the &lt;a href=&quot;/why_boost_multi_index_container-part1/&quot;&gt;first part&lt;/a&gt; of this article, where I explained the advantages 
 of Boost.MultiIndex over the standard containers when you need to have multiple views on a set of data.&lt;/p&gt;
 
 &lt;p&gt;In this second part, I would like to talk about the benefits you can get from using Boost.MultiIndex as a single-index hash table, as a replacement
@@ -307,7 +307,7 @@ acceptable scenario in my mind would be if &lt;em&gt;X&lt;/em&gt; owns the viewe
 &lt;/ol&gt;
 
 </description>
-        <pubDate>Tue, 15 Nov 2016 22:04:00 +0100</pubDate>
+        <pubDate>Wed, 23 Nov 2016 22:10:00 +0100</pubDate>
         <link>http://david-grs.github.io/why_boost_multi_index_container-part2</link>
         <guid isPermaLink="true">http://david-grs.github.io/why_boost_multi_index_container-part2</guid>
         
