@@ -210,7 +210,7 @@ and does not share <em>connection</em> ; otherwise it could simply use a <em>std
 <p>There are a few ways to solve this with unordered STL containers, but…</p>
 
 <ol>
-  <li><code>std::unordered_set&lt;connection*&gt;</code>: you lose the RAII</li>
+  <li><code>std::unordered_set&lt;connection*&gt;</code>: you lose the advantages of RAII</li>
   <li><code>std::unordered_map&lt;connection*, std::unique_ptr&lt;connection&gt;&gt;</code>: ugly and under-performant solution</li>
 </ol>
 
@@ -285,7 +285,7 @@ first element of the pair or the second.</p>
   <li>
     <p>A better way to do it in my opinion is to have a <code>std::unordered_map&lt;session_id, session&gt;</code>, with <em>session_id</em> a <em>struct</em> with two <em>std::string</em>. This gets rid of a few drawbacks that we have in the solution 1, but requires a 
 <em>std::hash</em> specialization and <em>operator==</em> definition. Not dramatic, but this raises more questions: how to implement a <em>good</em> hash function that takes two <em>std::string</em> as input?
-I usually always use <a href="http://www.boost.org/doc/libs/1_62_0/doc/html/hash/combine.html">Boost.Functional/Hash</a> for that, but not every application can support Boost as a dependency. Apparently, 
+I usually use <a href="http://www.boost.org/doc/libs/1_62_0/doc/html/hash/combine.html">Boost.Functional/Hash</a> for that, but not every application can support Boost as a dependency. Apparently, 
 a good start would be to use <a href="http://stackoverflow.com/questions/17016175/c-unordered-map-using-a-custom-class-type-as-the-key">a xor with some bit shifting</a> on the two <em>std::string</em> hashes, but 
 who knows if this is really good?</p>
   </li>
