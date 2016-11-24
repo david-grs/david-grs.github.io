@@ -364,17 +364,19 @@ acceptable scenario in my mind would be if <em>X</em> owns the viewed string as 
 
 </blockquote>
 
-<p>Which one of the followings are correct?</p>
-
 <ol>
   <li><code>m.emplace(x.str, x)</code></li>
   <li><code>std::experimental::string_view sv{x.str};</code><br />
 <code>m.emplace(sv, x.str); </code> </li>
   <li><code>m.emplace(x.str, std::move(x));</code></li>
-  <li>
-    <p><code>std::experimental::string_view sv{x.str};</code><br />
-<code>m.emplace(sv, std::move(x));</code></p>
-  </li>
+  <li><code>std::experimental::string_view sv{x.str};</code><br />
+<code>m.emplace(sv, std::move(x));</code>
+<br /></li>
+</ol>
+
+<p>… and the answer is:</p>
+
+<ol>
   <li>is wrong because <em>x</em> is going to be copied, while the key is pointing to <em>x.str</em></li>
   <li>is wrong for the same reason</li>
   <li>is wrong because there is no guarantee on the order of evaluation of arguments, thus <em>x</em> could be moved before <em>x.str</em> is evaluated, resulting in the construction of a string view that points to some undefined memory area</li>

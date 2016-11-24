@@ -6,8 +6,8 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Thu, 24 Nov 2016 13:54:28 +0100</pubDate>
-    <lastBuildDate>Thu, 24 Nov 2016 13:54:28 +0100</lastBuildDate>
+    <pubDate>Thu, 24 Nov 2016 15:12:26 +0100</pubDate>
+    <lastBuildDate>Thu, 24 Nov 2016 15:12:26 +0100</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
     
       <item>
@@ -289,17 +289,19 @@ acceptable scenario in my mind would be if &lt;em&gt;X&lt;/em&gt; owns the viewe
 
 &lt;/blockquote&gt;
 
-&lt;p&gt;Which one of the followings are correct?&lt;/p&gt;
-
 &lt;ol&gt;
   &lt;li&gt;&lt;code&gt;m.emplace(x.str, x)&lt;/code&gt;&lt;/li&gt;
   &lt;li&gt;&lt;code&gt;std::experimental::string_view sv{x.str};&lt;/code&gt;&lt;br /&gt;
 &lt;code&gt;m.emplace(sv, x.str); &lt;/code&gt; &lt;/li&gt;
   &lt;li&gt;&lt;code&gt;m.emplace(x.str, std::move(x));&lt;/code&gt;&lt;/li&gt;
-  &lt;li&gt;
-    &lt;p&gt;&lt;code&gt;std::experimental::string_view sv{x.str};&lt;/code&gt;&lt;br /&gt;
-&lt;code&gt;m.emplace(sv, std::move(x));&lt;/code&gt;&lt;/p&gt;
-  &lt;/li&gt;
+  &lt;li&gt;&lt;code&gt;std::experimental::string_view sv{x.str};&lt;/code&gt;&lt;br /&gt;
+&lt;code&gt;m.emplace(sv, std::move(x));&lt;/code&gt;
+&lt;br /&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;… and the answer is:&lt;/p&gt;
+
+&lt;ol&gt;
   &lt;li&gt;is wrong because &lt;em&gt;x&lt;/em&gt; is going to be copied, while the key is pointing to &lt;em&gt;x.str&lt;/em&gt;&lt;/li&gt;
   &lt;li&gt;is wrong for the same reason&lt;/li&gt;
   &lt;li&gt;is wrong because there is no guarantee on the order of evaluation of arguments, thus &lt;em&gt;x&lt;/em&gt; could be moved before &lt;em&gt;x.str&lt;/em&gt; is evaluated, resulting in the construction of a string view that points to some undefined memory area&lt;/li&gt;
