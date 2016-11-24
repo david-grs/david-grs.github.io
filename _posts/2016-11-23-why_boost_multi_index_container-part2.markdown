@@ -127,14 +127,15 @@ acceptable scenario in my mind would be if *X* owns the viewed string as *const 
 > How do you insert an element in such container?
 >
 
-Which one of the followings are correct?
-
 1. `m.emplace(x.str, x)`
 2. `std::experimental::string_view sv{x.str};`<br />
 `m.emplace(sv, x.str); ` 
 3. `m.emplace(x.str, std::move(x));`
 4. `std::experimental::string_view sv{x.str};`<br />
 `m.emplace(sv, std::move(x));`
+<br />
+
+... and the answer is:
 
 1. is wrong because *x* is going to be copied, while the key is pointing to *x.str*
 2. is wrong for the same reason
