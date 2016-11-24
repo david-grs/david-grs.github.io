@@ -2,10 +2,10 @@
 layout: post
 title:  "Why you should use Boost.MultiIndex (Part II)"
 author: David Gross
-date:   2016-11-15 22:04
+date:   2016-11-23 22:10
 ---
 
-Last week, I posted the [first part](/why_boost_multi_index_container-part1/) of this article, where I explained the advantages 
+A few weeks ago, I posted the [first part](/why_boost_multi_index_container-part1/) of this article, where I explained the advantages 
 of Boost.MultiIndex over the standard containers when you need to have multiple views on a set of data.
 
 In this second part, I would like to talk about the benefits you can get from using Boost.MultiIndex as a single-index hash table, as a replacement
