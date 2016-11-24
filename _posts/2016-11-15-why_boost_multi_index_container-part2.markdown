@@ -97,11 +97,16 @@ desirable depending on your API.
 As you can see, there is no simple and straightforward solution to that (simple!) problem. Here is what is looks like with Boost.MultiIndex:
 
 {% gist david-grs/1f17bafa94b9596ec375532836fccd12 boost_mic_composite_key.cc %}
+<br />
+The *composite_key* takes in this case two *const_mem_fun* &mdash; which is the argument used to refer to const member functions. For the lookup, you will have to build a Boost.Tuple as a key.
 
 As I wrote in the first paragraph, building *std::string* to do a lookup take a significant time. If you care enough about performance, here is the solution that is going to squeeze the
 last bits and nanoseconds: 
 
 {% gist david-grs/1f17bafa94b9596ec375532836fccd12 boost_mic_composite_key_view.cc %}
+<br />
+Same approach as before: the composite key is still composed by the two methods of your class, that we modify of course in order to return a *std::string_view* and not a *std::string* anymore. The only
+annoying bit is that we have to explicitly define the *composite_key_hash* as Boost.MultiIndex doesn't pick the *std::string_view* specialization!
 
 
 
