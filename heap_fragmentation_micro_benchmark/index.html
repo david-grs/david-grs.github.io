@@ -97,6 +97,7 @@ you have to generate a “production-like” set of inputs in order to get somet
 accept to sacrifice a slight portion of accuracy to get some numbers and talk about something during lunch with your workmates. Everybody likes numbers, so 
 let’s micro-benchmark.</p>
 
+<h2 id="the-simplest-micro-benchmark">The simplest #µ-benchmark</h2>
 <p>This is a very simple — and most boring I could find — micro-benchmark:</p>
 <noscript><pre>void benchmark_unordered_map_emplace()
 {
@@ -137,9 +138,29 @@ number of elements in the container. We even added a layer of template because i
 
 <p><br /></p>
 
-<p>And <em>at some point</em>, you re-order the function calls — just for convenience, because it is nicer like that. And boom. You didn’t expect <em>anything</em> to change
-because you were staring these numbers for hours… but you now get: <code>100000 iterations of umap&lt;int, int&gt;::emplace() took 1143ms</code>.</p>
+<h2 id="the-tragedy">The tragedy</h2>
+<p><em>At some point</em>, you decide to re-order the function calls. You don’t know why — just for convenience, because it is nicer like that, probably. And boom. You didn’t 
+expect <em>anything</em> to change because you were staring these numbers for hours… but you now get: </p>
 
+<p><code>100000 iterations of umap&lt;int, int&gt;::emplace() took 1143ms</code></p>
+
+<p>How come? You run again and get the same results. Nothing changed. You checkout the previous commit and test again: it is fixed. How can a simple re-ordering of function
+calls change by more than a factor two the time of this <em>for</em> statement?</p>
+
+<h2 id="heap-fragmentation">Heap fragmentation</h2>
+<p>The cause for this difference of time is simply the heap. I maintain a simple <a href="https://github.com/david-grs/mtrace">C++ wrapper around the malloc hooks</a> that gives to us the immediat
+answer here:</p>
+
+<p><code>
+benchmark_unordered_map_emplace() took 565ms
+time spent in malloc(): 231ms
+time spent in free(): 1ms
+time spent in realloc(): 0ms
+benchmark_unordered_map_emplace() took 1097ms
+time spent in malloc(): 916ms
+time spent in free(): 94ms
+time spent in realloc(): 0ms
+</code></p>
 
         </section>
         <footer class="post-footer">
