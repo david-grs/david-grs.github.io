@@ -8,7 +8,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
   <title>Heap fragmentation or how my micro-benchmark went wrong</title>
-  <meta name="description" content="Writing a micro-benchmark is very simple — knowing what you measure and if the way your benchmarked code is called is the same as in your production environment is much more challenging." />
+  <meta name="description" content="Micro-benchmarking code always looks simple: a few variables, a small for loop and two std::chrono calls. I think this simplicity is an illusion and that, most of the time, micro-benchmarking code ..." />
 
   <meta name="HandheldFriendly" content="True" />
   <meta name="MobileOptimized" content="320" />
@@ -19,7 +19,7 @@
   <meta property="og:site_name" content="Thoughts from a Wall Street developer" />
   <meta property="og:title" content="Heap fragmentation or how my micro-benchmark went wrong"/>
   
-  <meta property="og:description" content="Writing a micro-benchmark is very simple — knowing what you measure and if the way your benchmarked code is called is the same as in your production environment is much more challenging." />
+  <meta property="og:description" content="Micro-benchmarking code always looks simple: a few variables, a small for loop and two std::chrono calls. I think this simplicity is an illusion and that, most of the time, micro-benchmarking code ..." />
   
   <meta property="og:image" content="http://david-grs.github.io" />
   <meta property="og:url" content="http://david-grs.github.io/heap_fragmentation_micro_benchmark" >
@@ -87,18 +87,28 @@
             <span class="post-reading-time"></span> read
           </div>
           <a name="topofpage"></a>
-          <p>Writing a micro-benchmark is very simple — knowing what you measure and if the way your benchmarked code is called is the same as in your production environment is much more challenging.</p>
+          <p>Micro-benchmarking code always looks simple: a few variables, a small <em>for</em> loop and two <em>std::chrono</em> calls. I think this simplicity is an illusion 
+and that, most of the time, micro-benchmarking code is either complicated or inaccurate. </p>
 
-<p>There were a few things I knew about micro-benchmarking: you have to be careful that the compiler does not optimize out the code
-you are timing, the results are inaccurate because all your caches are hot and you will get the maximum cache hit rate possible, 
-you have to generate a “production-like” set of inputs in order to get something realistic, etc. It is really hard. </p>
+<p>You have to be careful  that the compiler does not optimize out the code you are timing, all the caches are usually hot (as you loop over the 
+same operation) and you will get a totally different cache hit rate than in production,  a “production-like” set of inputs 
+has to be generated — without affecting the resuts of the benchmark of course! —, on each iteration of the benchmark 
+the state of your object is changing but should still allow the benchmark to continue, etc. It is really hard.</p>
 
-<p>It is fine though, because we are aware of the dangers and the inaccuracy of the results. What usually matter are relative numbers, not absolute, and we 
-accept to sacrifice a slight portion of accuracy to get some numbers and talk about something during lunch with your workmates. Everybody likes numbers, so 
-let’s micro-benchmark.</p>
+<p>And this is why I usually don’t micro-benchmark: it is too hard for what it is ; you will get numbers and finally be disappointed or puzzled 
+because these numbers in production will be different.</p>
 
-<h2 id="the-simplest-micro-benchmark">The simplest #µ-benchmark</h2>
-<p>This is a very simple — and most boring I could find — micro-benchmark:</p>
+<p>I prefer measuring the impact of my code changes directly in production — or in a production-like environment. The initial cost of setting up such timing 
+system might be higher, but on the long term you get a lot of benefits from it. Lots of code changes can simply not be micro-benchmarked at all. In his 
+talk <em>Optimization Tips - Mo’ Hustle Mo’ Problems</em>, Andrei Alexandrescu is presenting the speed gain of not inlining the destructor of an object 
+— by simply defining an empty destructor in the source file instead of the default one. Good luck to micro-benchmark that, and if you actually do 
+it <em>somehow</em>, you will get the opposite result, as having the call <em>inlined</em> will be of course faster in a benchmark but in the context of your 
+application, slower — mainly due to the instruction cache.</p>
+
+<p>This post is about my last adventure with a micro-benchmark. </p>
+
+<h2 id="the-simplest-micro-benchmark">The simplest µ-benchmark</h2>
+<p>This is a very simple — and the most boring I could find — micro-benchmark:</p>
 <noscript><pre>void benchmark_unordered_map_emplace()
 {
     static const int Iterations = 1e6;
@@ -109,16 +119,18 @@ let’s micro-benchmark.</p>
         um.emplace(i, i);
     auto end = std::chrono::system_clock::now();
     
-    std::cout &lt;&lt; Iterations &lt;&lt; &quot; iterations of umap&lt;int, int&gt;::emplace() took &quot; &lt;&lt; std::chrono::duration_cast&lt;std::chrono::milliseconds&gt;(end - start).count() &lt;&lt; &quot;ms&quot; &lt;&lt; std::endl;
+    std::cout &lt;&lt; Iterations &lt;&lt; &quot; iterations of umap&lt;int, int&gt;::emplace() took &quot; 
+              &lt;&lt; std::chrono::duration_cast&lt;std::chrono::milliseconds&gt;(end - start).count() 
+              &lt;&lt; &quot;ms&quot; &lt;&lt; std::endl;
 }</pre></noscript>
 <script src="https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=awesome_benchmark.cc"> </script>
 
 <p><br />
 This gives us the output: <code>100000 iterations of umap&lt;int, int&gt;::emplace() took 565ms</code>. Awesome. This is exactly what we wanted to know.</p>
 
-<p>Now, a few hours later, we added a lot of other small functions like this one. We are now measuring the time of the <em>emplace</em> operation for different containers,
+<p>A few hours later, we added a lot of other small functions like this one. We are now measuring the time of the <em>emplace</em> operation for different containers,
 with different contained type — to change their size and the cost of the move, copy, construction and destruction operations — and with different
-number of elements in the container. We even added a layer of template because it looks better.</p>
+number of elements in the container. We even added a layer of template because it looks better!</p>
 
 <p>Our <em>main()</em> is now something like this:</p>
 <noscript><pre>int main()
@@ -136,10 +148,8 @@ number of elements in the container. We even added a layer of template because i
 }</pre></noscript>
 <script src="https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=even_more_awesome_benchmark.cc"> </script>
 
-<p><br /></p>
-
 <h2 id="the-tragedy">The tragedy</h2>
-<p><em>At some point</em>, you decide to re-order the function calls. You don’t know why — just for convenience, because it is nicer like that, probably. And boom. You didn’t 
+<p><em>At some point</em>, you decide to re-order the function calls. You don’t know why — just for convenience, because it is nicer like that. And boom. You didn’t 
 expect <em>anything</em> to change because you were staring these numbers for hours… but you now get: </p>
 
 <p><code>100000 iterations of umap&lt;int, int&gt;::emplace() took 1143ms</code></p>
@@ -147,12 +157,40 @@ expect <em>anything</em> to change because you were staring these numbers for ho
 <p>How come? You run again and get the same results. Nothing changed. You checkout the previous commit and test again: it is fixed. How can a simple re-ordering of function
 calls change by more than a factor two the time of this <em>for</em> statement?</p>
 
+<h2 id="hardware-counters-are-your-friends">Hardware counters are your friends</h2>
+<p>In this kind of scenario, you have a quite limited set of options.</p>
+
+<p>First of all, you might think about looking at the disassembly. I know that we all love the <a href="http://gcc.godbolt.org">GCC explorer</a>, but when you are benchmarking 
+containers, the assembly code will be very long. Also, reodering function calls is not a small change, so the entire assembly code will have changed and it will hard to compare that by hand.</p>
+
+<p>The most powerful tool you could use in this case if your intuition does not guide you towards the light is a feature offered by your CPU, called hardware counters. <em>perf</em> is the simplest way 
+to use them: </p>
+
+<pre><code>$ perf stat -e cycles,instructions,branches,branch-misses,cache-misses ls
+
+    Performance counter stats for 'ls':
+
+    1 783 212 cycles                   
+    1 246 362 instructions       #    0,70  insns per cycle        
+      253 533 branches                                                    
+       12 550 branch-misses      #    4,95% of all branches        
+        6 770 cache-misses                                                
+
+     0,001311920 seconds time elapsed
+</code></pre>
+
+<p>As the name indicates, hardware counters are CPU specific. The most classic ones — about instructions, cycles, branches and instruction/data caches — are available on 
+most of the Intel chips though. </p>
+
+<p>In order to use them, the reference is the <a href="">libpapi</a>. As it is a C library, I wrote a while ago a small C++ header file <a href="">libpapipp</a> to wrap it.</p>
+
+<p>La moncef je vais foutre un autre snippet et utiliser papipp. et montrer que olala ya beaucoup plus dinstruction donc cest forcement malloc car ya rien dautre.</p>
+
 <h2 id="heap-fragmentation">Heap fragmentation</h2>
 <p>The cause for this difference of time is simply the heap. I maintain a simple <a href="https://github.com/david-grs/mtrace">C++ wrapper around the malloc hooks</a> that gives to us the immediat
 answer here:</p>
 
-<p><code>
-benchmark_unordered_map_emplace() took 565ms
+<pre><code>benchmark_unordered_map_emplace() took 565ms
 time spent in malloc(): 231ms
 time spent in free(): 1ms
 time spent in realloc(): 0ms
@@ -160,7 +198,7 @@ benchmark_unordered_map_emplace() took 1097ms
 time spent in malloc(): 916ms
 time spent in free(): 94ms
 time spent in realloc(): 0ms
-</code></p>
+</code></pre>
 
         </section>
         <footer class="post-footer">
