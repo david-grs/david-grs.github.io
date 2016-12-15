@@ -8,7 +8,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
   <title>Heap fragmentation or how my micro-benchmark went wrong</title>
-  <meta name="description" content="Micro-benchmarking code always looks simple: a few variables, a small for loop and two std::chrono calls. I think this simplicity is an illusion and that, most of the time, micro-benchmarking code ..." />
+  <meta name="description" content="Micro-benchmarking code always looks simple: a few variables, a small for loop and two std::chrono calls. I think this simplicity is an illusion.Micro-benchmarking is either complicated or inaccura..." />
 
   <meta name="HandheldFriendly" content="True" />
   <meta name="MobileOptimized" content="320" />
@@ -19,12 +19,12 @@
   <meta property="og:site_name" content="Thoughts from a Wall Street developer" />
   <meta property="og:title" content="Heap fragmentation or how my micro-benchmark went wrong"/>
   
-  <meta property="og:description" content="Micro-benchmarking code always looks simple: a few variables, a small for loop and two std::chrono calls. I think this simplicity is an illusion and that, most of the time, micro-benchmarking code ..." />
+  <meta property="og:description" content="Micro-benchmarking code always looks simple: a few variables, a small for loop and two std::chrono calls. I think this simplicity is an illusion.Micro-benchmarking is either complicated or inaccura..." />
   
   <meta property="og:image" content="http://david-grs.github.io" />
   <meta property="og:url" content="http://david-grs.github.io/heap_fragmentation_micro_benchmark" >
   <meta property="og:type" content="blog" />
-  <meta property="article:published_time" content="2016-12-08T22:46:00+01:00">
+  <meta property="article:published_time" content="2016-12-15T22:46:00+01:00">
 
   <link rel="canonical" href="http://david-grs.github.io/heap_fragmentation_micro_benchmark"/>
   <link rel="shortcut icon" href="/assets/images/favicon.png" type="image/png"/>
@@ -73,7 +73,7 @@
               <div class="author-image" style="background-image: url(/assets/images/author.jpg)">Blog Logo</div>
               <h4 class="author-name" itemprop="author" itemscope itemtype="http://schema.org/Person">David Gross</h4>
               on
-              <time datetime="2016-12-08T22:46:00+01:00">08 Dec 2016</time>
+              <time datetime="2016-12-15T22:46:00+01:00">15 Dec 2016</time>
               <!-- , tagged on <span class="post-tag-">, <a href="/tag/"></a></span> -->
             </div>
           </div>
@@ -87,23 +87,23 @@
             <span class="post-reading-time"></span> read
           </div>
           <a name="topofpage"></a>
-          <p>Micro-benchmarking code always looks simple: a few variables, a small <em>for</em> loop and two <em>std::chrono</em> calls. I think this simplicity is an illusion 
-and that, most of the time, micro-benchmarking code is either complicated or inaccurate. </p>
+          <p>Micro-benchmarking code always looks simple: a few variables, a small <em>for</em> loop and two <em>std::chrono</em> calls. I think this simplicity is an illusion.
+Micro-benchmarking is either complicated or inaccurate. </p>
 
-<p>You have to be careful  that the compiler does not optimize out the code you are timing, all the caches are usually hot (as you loop over the 
-same operation) and you will get a totally different cache hit rate than in production,  a “production-like” set of inputs 
+<p>You have to be careful that the compiler does not optimize out the code you are timing, accurately measure the time and know your time resolution,
+all the caches are usually hot (as you loop over the same operation) and you will get a totally different cache hit rate than in production, a “production-like” set of inputs 
 has to be generated — without affecting the resuts of the benchmark of course! —, on each iteration of the benchmark 
 the state of your object is changing but should still allow the benchmark to continue, etc. It is really hard.</p>
 
 <p>And this is why I usually don’t micro-benchmark: it is too hard for what it is ; you will get numbers and finally be disappointed or puzzled 
-because these numbers in production will be different.</p>
+because you will not get the same latencies in production.</p>
 
 <p>I prefer measuring the impact of my code changes directly in production — or in a production-like environment. The initial cost of setting up such timing 
 system might be higher, but on the long term you get a lot of benefits from it. Lots of code changes can simply not be micro-benchmarked at all. In his 
-talk <em>Optimization Tips - Mo’ Hustle Mo’ Problems</em>, Andrei Alexandrescu is presenting the speed gain of not inlining the destructor of an object 
-— by simply defining an empty destructor in the source file instead of the default one. Good luck to micro-benchmark that, and if you actually do 
-it <em>somehow</em>, you will get the opposite result, as having the call <em>inlined</em> will be of course faster in a benchmark but in the context of your 
-application, slower — mainly due to the instruction cache.</p>
+talk <a href="https://www.youtube.com/watch?v=Qq_WaiwzOtI"><em>Optimization Tips - Mo’ Hustle Mo’ Problems</em></a>, Andrei Alexandrescu is presenting the speed gain of 
+not inlining the destructor of an object — by simply defining an empty destructor in the source file instead of the default one. Good luck 
+to micro-benchmark that, and if you actually do it <em>somehow</em>, I guess you will get the opposite result, as having the <em>inlined</em> call will save some instructions
+and the instruction cache won’t be polluted.</p>
 
 <p>This post is about my last adventure with a micro-benchmark. </p>
 
@@ -111,7 +111,6 @@ application, slower — mainly due to the instruction cache.</p>
 <p>This is a very simple — and the most boring I could find — micro-benchmark:</p>
 <noscript><pre>void benchmark_unordered_map_emplace()
 {
-    static const int Iterations = 1e6;
     std::unordered_map&lt;int, int&gt; um;
     
     auto start = std::chrono::system_clock::now();
@@ -148,6 +147,8 @@ number of elements in the container. We even added a layer of template because i
 }</pre></noscript>
 <script src="https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=even_more_awesome_benchmark.cc"> </script>
 
+<p><br /></p>
+
 <h2 id="the-tragedy">The tragedy</h2>
 <p><em>At some point</em>, you decide to re-order the function calls. You don’t know why — just for convenience, because it is nicer like that. And boom. You didn’t 
 expect <em>anything</em> to change because you were staring these numbers for hours… but you now get: </p>
@@ -157,6 +158,23 @@ expect <em>anything</em> to change because you were staring these numbers for ho
 <p>How come? You run again and get the same results. Nothing changed. You checkout the previous commit and test again: it is fixed. How can a simple re-ordering of function
 calls change by more than a factor two the time of this <em>for</em> statement?</p>
 
+<p>You decide to run the benchmark twice, as first benchmark and last one:</p>
+
+<noscript><pre>int main()
+{
+    the_awesome_benchmark(); 
+    a_lot_of_other_benchmarks();
+    the_awesome_benchmark();
+}</pre></noscript>
+<script src="https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=benchmark_cmp.cc"> </script>
+
+<p><br />
+and you still get:</p>
+
+<pre><code>first run:   100000 iterations of umap&lt;int, int&gt;::emplace() took 565ms
+second run: 100000 iterations of umap&lt;int, int&gt;::emplace() took 1143ms &lt;br /&gt;
+</code></pre>
+
 <h2 id="hardware-counters-are-your-friends">Hardware counters are your friends</h2>
 <p>In this kind of scenario, you have a quite limited set of options.</p>
 
@@ -164,41 +182,96 @@ calls change by more than a factor two the time of this <em>for</em> statement?<
 containers, the assembly code will be very long. Also, reodering function calls is not a small change, so the entire assembly code will have changed and it will hard to compare that by hand.</p>
 
 <p>The most powerful tool you could use in this case if your intuition does not guide you towards the light is a feature offered by your CPU, called hardware counters. <em>perf</em> is the simplest way 
-to use them: </p>
+to use them, but in this case you would like to only get the counters on a small piece of C++ code, not the entire execution of your program.</p>
 
-<pre><code>$ perf stat -e cycles,instructions,branches,branch-misses,cache-misses ls
+<p>In order to use them in C/C++, the reference is the <a href="http://icl.cs.utk.edu/papi/">libpapi</a>. As it is a C library, I wrote a while ago a short C++ header file to make the basic usage of 
+the library easier: <a href="https://github.com/david-grs/papipp">libpapipp</a>. Let’s use it here to measure the number of instructions and cycles, to give us a bit more an idea on what is going on.</p>
 
-    Performance counter stats for 'ls':
+<noscript><pre>void benchmark_unordered_map_emplace()
+{
+    std::unordered_map&lt;int, int&gt; um;
+    
+     // we measure the hardware events total instructions and total cycles
+    papi::event_set&lt;PAPI_TOT_INS, PAPI_TOT_CYC&gt; events;
+  
+    auto start = std::chrono::system_clock::now();
+    events.start_counters();
+  
+    for (int i = 0; i &lt; Iterations; ++i)
+        um.emplace(i, i);
+    
+    events.stop_counters();
+    auto end = std::chrono::system_clock::now();
+    
+    std::cout &lt;&lt; events.at&lt;0&gt;().counter() &lt;&lt; &quot; instructions, &quot; &lt;&lt; events.at&lt;0&gt;().counter() &lt;&lt; &quot; cycles&quot; &lt;&lt; std::endl;
+}</pre></noscript>
+<script src="https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=benchmark_papipp.cc"> </script>
 
-    1 783 212 cycles                   
-    1 246 362 instructions       #    0,70  insns per cycle        
-      253 533 branches                                                    
-       12 550 branch-misses      #    4,95% of all branches        
-        6 770 cache-misses                                                
-
-     0,001311920 seconds time elapsed
-</code></pre>
-
-<p>As the name indicates, hardware counters are CPU specific. The most classic ones — about instructions, cycles, branches and instruction/data caches — are available on 
-most of the Intel chips though. </p>
-
-<p>In order to use them, the reference is the <a href="">libpapi</a>. As it is a C library, I wrote a while ago a small C++ header file <a href="">libpapipp</a> to wrap it.</p>
-
-<p>La moncef je vais foutre un autre snippet et utiliser papipp. et montrer que olala ya beaucoup plus dinstruction donc cest forcement malloc car ya rien dautre.</p>
+<p><br />
+This allows us to see that the number of instructions executed is actually 25% higher when we reorder the functions. This is a good indication, as the code is identical, we know that actually
+<em>more</em> code is executed</p>
 
 <h2 id="heap-fragmentation">Heap fragmentation</h2>
-<p>The cause for this difference of time is simply the heap. I maintain a simple <a href="https://github.com/david-grs/mtrace">C++ wrapper around the malloc hooks</a> that gives to us the immediat
-answer here:</p>
+<p>As you guessed because it is the title of this article, the difference comes from the heap. At the beginning of the micro-benchmark, the heap is in a <em>clean</em> state, while after a lot of 
+insertions and deletions in some containers, it is heavily fragmented, and one malloc() call might take much more time than expected. </p>
 
-<pre><code>benchmark_unordered_map_emplace() took 565ms
+<p>Let’s confirm that by measuring the time we spend in <em>malloc()</em> and <em>free()</em>. I updated for that an old <a href="https://github.com/david-grs/mtrace">C++ wrapper around the malloc hooks</a> that I developed 
+once to print the memory allocations. Here we don’t want to print them (there are millions!), but measure the time spent in them:</p>
+
+<noscript><pre>void benchmark_unordered_map_emplace()
+{
+    std::unordered_map&lt;int, int&gt; um;
+   
+    // this setups our malloc/free/realloc hooks
+    mtrace&lt;malloc_chrono&gt; mt;
+  
+    auto start = std::chrono::system_clock::now();
+    events.start_counters();
+  
+    for (int i = 0; i &lt; Iterations; ++i)
+        um.emplace(i, i);
+    
+    events.stop_counters();
+    auto end = std::chrono::system_clock::now();
+    
+    std::cout &lt;&lt; &quot;time spent in malloc(): &quot; &lt;&lt; duration_cast&lt;milliseconds&gt;(chr.malloc_time()).count() &lt;&lt; &quot;ms\n&quot;
+              &lt;&lt; &quot;time spent in free(): &quot; &lt;&lt; duration_cast&lt;milliseconds&gt;(chr.free_time()).count() &lt;&lt; &quot;ms\n&quot;
+              &lt;&lt; &quot;time spent in realloc(): &quot; &lt;&lt; duration_cast&lt;milliseconds&gt;(chr.realloc_time()).count() &lt;&lt; &quot;ms&quot; &lt;&lt; std::endl;
+}</pre></noscript>
+<script src="https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=benchmark_mtrace.cc"> </script>
+
+<p><br />
+… which gives us immediately the answer:</p>
+
+<pre><code>first run:
+benchmark_unordered_map_emplace() took 565ms
 time spent in malloc(): 231ms
 time spent in free(): 1ms
 time spent in realloc(): 0ms
-benchmark_unordered_map_emplace() took 1097ms
+
+second run:
+benchmark_unordered_map_emplace() took 1143ms
 time spent in malloc(): 916ms
 time spent in free(): 94ms
 time spent in realloc(): 0ms
 </code></pre>
+
+<p>We were spending almost 90% of the CPU time in <em>malloc()</em> and <em>free()</em> the second run of the benchmark! For even more details, we can also call <em>malloc_info</em> before our second run:</p>
+
+<pre><code>&lt;malloc version="1"&gt;
+&lt;heap nr="0"&gt;
+&lt;sizes&gt;
+&lt;size from="33" to="48" total="383999952" count="7999999"/&gt;
+&lt;size from="49" to="64" total="64" count="1"/&gt;
+&lt;size from="33" to="33" total="99" count="3"/&gt;
+&lt;unsorted from="145" to="1009" total="1156000346" count="3999994"/&gt;
+&lt;/sizes&gt;
+&lt;total type="fast" count="8000000" size="384000016"/&gt;
+&lt;total type="rest" count="3999997" size="1156000445"/&gt;
+</code></pre>
+
+<p>Micro-benchmarking is hard. Be very careful while doing it ; this kind of mistakes or wrong measurements can happen, even if you are using Google Benchmark ;)</p>
+
 
         </section>
         <footer class="post-footer">
@@ -216,7 +289,7 @@ time spent in realloc(): 0ms
               <h4>David Gross</h4>
               <p class="bio"></p>
               <hr>
-              <p class="published">Published <time datetime="2016-12-08 22:46">08 Dec 2016</time></p>
+              <p class="published">Published <time datetime="2016-12-15 22:46">15 Dec 2016</time></p>
             </section>
           </div>
           
