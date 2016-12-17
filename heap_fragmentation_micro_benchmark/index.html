@@ -144,12 +144,14 @@ number of elements in the container. We even added a layer of template because i
         benchmark_emplace&lt;boost::container::flat_map&lt;int, int&gt;&gt;(gen);
     }
   
-    // Foo is a medium size object...
-    benchmark_emplace&lt;std::unordered_map&lt;Foo, Foo&gt;&gt;(&amp;Foo::Generate);
-    benchmark_emplace&lt;std::map&lt;Foo, Foo&gt;&gt;(&amp;Foo::Generate);
-    benchmark_emplace&lt;boost::container::flat_map&lt;Foo, Foo&gt;&gt;(&amp;Foo::Generate);
-  
-    // We also test big objects, different number of elements, and a lot of other fun stuff. 
+    {
+        // Foo is a medium size object...
+        benchmark_emplace&lt;std::unordered_map&lt;Foo, Foo&gt;&gt;(&amp;Foo::Generate);
+        benchmark_emplace&lt;std::map&lt;Foo, Foo&gt;&gt;(&amp;Foo::Generate);
+        benchmark_emplace&lt;boost::container::flat_map&lt;Foo, Foo&gt;&gt;(&amp;Foo::Generate);
+
+        // We also test big objects, different number of elements, and a lot of other fun stuff. 
+    }
 }</pre></noscript>
 <script src="https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=even_more_awesome_benchmark.cc"> </script>
 
@@ -169,7 +171,11 @@ calls change by more than a factor two the time of this <em>for</em> statement?<
 <noscript><pre>void benchmark()
 {
     std::cout &lt;&lt; &quot;first run&quot; &lt;&lt; benchmark_emplace&lt;std::unordered_map&lt;int, int&gt;&gt;(gen);
-    // a lot of other benchmarks (cf previous listing)....;
+    
+    {
+        // a lot of other benchmarks (cf previous listing)...;
+    }
+    
     std::cout &lt;&lt; &quot;second run&quot; &lt;&lt; benchmark_emplace&lt;std::unordered_map&lt;int, int&gt;&gt;(gen);
 }</pre></noscript>
 <script src="https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=benchmark_cmp.cc"> </script>
@@ -216,10 +222,10 @@ This allows us to see that the number of instructions executed is actually 25% h
 
 <h2 id="heap-fragmentation">Heap fragmentation</h2>
 <p>As you guessed because it is the title of this article, the difference comes from the heap. At the beginning of the micro-benchmark, the heap is in a <em>clean</em> state, while after a lot of 
-insertions and deletions in some containers, it is heavily fragmented, and one malloc() call might take much more time than expected. </p>
+container operations — insertions and deletions — it is heavily fragmented, and one malloc() call might take much more time than expected. </p>
 
 <p>Let’s confirm that by measuring the time we spend in <em>malloc()</em> and <em>free()</em>. I updated for that an old <a href="https://github.com/david-grs/mtrace">C++ wrapper around the malloc hooks</a> that I developed 
-once to print the memory allocations. Here we don’t want to print them (there are millions!), but measure the time spent in them:</p>
+to follow each memory allocation — by printing them. Here we don’t want to print them (there are millions!), but measure the time spent in these functions:</p>
 
 <noscript><pre>template &lt;typename Container, typename KeyGenerator&gt;
 void benchmark_emplace(KeyGenerator gen)
@@ -241,20 +247,19 @@ void benchmark_emplace(KeyGenerator gen)
 <p><br />
 … which gives us immediately the answer:</p>
 
-<pre><code>first run:
-benchmark_unordered_map_emplace() took 565ms
+<pre><code>first run: benchmark_unordered_map_emplace() took 565ms
 time spent in malloc(): 231ms
 time spent in free(): 1ms
 time spent in realloc(): 0ms
 
-second run:
-benchmark_unordered_map_emplace() took 1143ms
+second run: benchmark_unordered_map_emplace() took 1143ms
 time spent in malloc(): 916ms
 time spent in free(): 94ms
 time spent in realloc(): 0ms
 </code></pre>
 
-<p>We were spending almost 90% of the CPU time in <em>malloc()</em> and <em>free()</em> the second run of the benchmark! For even more details, we can also call <em>malloc_info</em> before our second run:</p>
+<p>We were spending almost 90% of the CPU time in <em>malloc()</em> and <em>free()</em> the second run of the benchmark! To get even more in depth, the GNU extension offers  <em>malloc_info</em> that returns
+the exhaustive list of bins — chunks that have been freed — by category (size, unsorted, fast). </p>
 
 <pre><code>&lt;malloc version="1"&gt;
 &lt;heap nr="0"&gt;
@@ -268,7 +273,43 @@ time spent in realloc(): 0ms
 &lt;total type="rest" count="3999997" size="1156000445"/&gt;
 </code></pre>
 
-<p>Micro-benchmarking is hard. Be very careful while doing it ; this kind of mistakes or wrong measurements can happen, even if you are using Google Benchmark ;)</p>
+<p>What happened in our case is that the destructors or several big containers just freed millions of chunks of different sizes. Remember that our code:</p>
+<noscript><pre>void benchmark()
+{
+    std::cout &lt;&lt; &quot;first run&quot; &lt;&lt; benchmark_emplace&lt;std::unordered_map&lt;int, int&gt;&gt;(gen);
+    
+    {
+        // a lot of other benchmarks (cf previous listing)...
+        // several destructors of big containers are called on the next line
+    }
+    
+    std::cout &lt;&lt; &quot;second run&quot; &lt;&lt; benchmark_emplace&lt;std::unordered_map&lt;int, int&gt;&gt;(gen);
+}</pre></noscript>
+<script src="https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=benchmark_cmp2.cc"> </script>
+
+<p><br />
+On the next <em>malloc()</em> call, the several <em>freelists</em> will be merged. If we introduce one small <em>malloc()</em> call before our second run of the benchmark and run <em>malloc_info</em> again, we
+now get a heap in a clean state, and the difference of time immediately disappears.</p>
+
+<pre><code>&lt;malloc version="1"&gt;
+&lt;heap nr="0"&gt;
+&lt;sizes&gt;
+&lt;/sizes&gt;
+&lt;total type="fast" count="0" size="0"/&gt;
+&lt;total type="rest" count="0" size="0"/&gt;
+</code></pre>
+
+<p>As a solution, we could simply rearrange our code to not destroy any containers before the end of all benchmarks:</p>
+<noscript><pre>void benchmark()
+{
+    std::cout &lt;&lt; &quot;first run&quot; &lt;&lt; benchmark_emplace&lt;std::unordered_map&lt;int, int&gt;&gt;(gen);
+    // a lot of other benchmarks (cf previous listing)...
+    std::cout &lt;&lt; &quot;second run&quot; &lt;&lt; benchmark_emplace&lt;std::unordered_map&lt;int, int&gt;&gt;(gen);
+}</pre></noscript>
+<script src="https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=benchmark_cmp3.cc"> </script>
+
+<p><br />
+Micro-benchmarking is hard. Be very careful while doing it ; this kind of mistakes or wrong measurements can happen, even if you are using Google Benchmark ;)</p>
 
 
         </section>
