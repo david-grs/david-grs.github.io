@@ -38,7 +38,7 @@ A few hours later, we added a lot of other small functions like this one. We are
 with different contained type &mdash; to change their size and the cost of the move, copy, construction and destruction operations &mdash; and with different
 number of elements in the container. We even added a layer of template because it looks better!
 
-Our *main()* is now something like this:
+Our *benchmark()* function is now something like this:
 {% gist david-grs/38b359aa9f20d7d27444c16c9e411855 even_more_awesome_benchmark.cc %} 
 <br />
 
@@ -88,28 +88,27 @@ This allows us to see that the number of instructions executed is actually 25% h
 Heap fragmentation
 ------------------
 As you guessed because it is the title of this article, the difference comes from the heap. At the beginning of the micro-benchmark, the heap is in a *clean* state, while after a lot of 
-insertions and deletions in some containers, it is heavily fragmented, and one malloc() call might take much more time than expected. 
+container operations &mdash; insertions and deletions &mdash; it is heavily fragmented, and one malloc() call might take much more time than expected. 
 
 Let's confirm that by measuring the time we spend in *malloc()* and *free()*. I updated for that an old [C++ wrapper around the malloc hooks](https://github.com/david-grs/mtrace) that I developed 
-once to print the memory allocations. Here we don't want to print them (there are millions!), but measure the time spent in them:
+to follow each memory allocation &mdash; by printing them. Here we don't want to print them (there are millions!), but measure the time spent in these functions:
 
 {% gist david-grs/38b359aa9f20d7d27444c16c9e411855 benchmark_mtrace.cc %} 
 <br />
 ... which gives us immediately the answer:
     
-    first run:
-    benchmark_unordered_map_emplace() took 565ms
+    first run: benchmark_unordered_map_emplace() took 565ms
     time spent in malloc(): 231ms
     time spent in free(): 1ms
     time spent in realloc(): 0ms
 
-    second run:
-    benchmark_unordered_map_emplace() took 1143ms
+    second run: benchmark_unordered_map_emplace() took 1143ms
     time spent in malloc(): 916ms
     time spent in free(): 94ms
     time spent in realloc(): 0ms
 
-We were spending almost 90% of the CPU time in *malloc()* and *free()* the second run of the benchmark! For even more details, we can also call *malloc_info* before our second run:
+We were spending almost 90% of the CPU time in *malloc()* and *free()* the second run of the benchmark! To get even more in depth, the GNU extension offers  *malloc_info* that returns
+the exhaustive list of bins &mdash; chunks that have been freed &mdash; by category (size, unsorted, fast). 
 
     <malloc version="1">
     <heap nr="0">
@@ -123,6 +122,23 @@ We were spending almost 90% of the CPU time in *malloc()* and *free()* the secon
     <total type="rest" count="3999997" size="1156000445"/>
 
 
+What happened in our case is that the destructors or several big containers just freed millions of chunks of different sizes. Remember that our code:
+{% gist david-grs/38b359aa9f20d7d27444c16c9e411855 benchmark_cmp2.cc %} 
+<br />
+On the next *malloc()* call, the several *freelists* will be merged. If we introduce one small *malloc()* call before our second run of the benchmark and run *malloc_info* again, we
+now get a heap in a clean state, and the difference of time immediately disappears.
+
+    <malloc version="1">
+    <heap nr="0">
+    <sizes>
+    </sizes>
+    <total type="fast" count="0" size="0"/>
+    <total type="rest" count="0" size="0"/>
+
+
+As a solution, we could simply rearrange our code to not destroy any containers before the end of all benchmarks:
+{% gist david-grs/38b359aa9f20d7d27444c16c9e411855 benchmark_cmp3.cc %} 
+<br />
 Micro-benchmarking is hard. Be very careful while doing it ; this kind of mistakes or wrong measurements can happen, even if you are using Google Benchmark ;)
 
 
