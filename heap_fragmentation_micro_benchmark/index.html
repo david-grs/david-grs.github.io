@@ -131,17 +131,23 @@ This gives us the output: <code>100000 iterations of umap&lt;int, int&gt;::empla
 with different contained type — to change their size and the cost of the move, copy, construction and destruction operations — and with different
 number of elements in the container. We even added a layer of template because it looks better!</p>
 
-<p>Our <em>main()</em> is now something like this:</p>
-<noscript><pre>int main()
+<p>Our <em>benchmark()</em> function is now something like this:</p>
+<noscript><pre>void benchmark()
 {
-    benchmark_emplace&lt;std::unordered_map&lt;int, int&gt;&gt;();
-    benchmark_emplace&lt;std::map&lt;int, int&gt;&gt;();
-    benchmark_emplace&lt;boost::container::flat_map&lt;int, int&gt;&gt;();
+    {
+        std::mt19937 gen(seed);
+        std::uniform_int_distribution&lt;&gt; rng;
+        auto gen = [&amp;]() { return rng(gen); };
+        
+        benchmark_emplace&lt;std::unordered_map&lt;int, int&gt;&gt;(gen);
+        benchmark_emplace&lt;std::map&lt;int, int&gt;&gt;(gen);
+        benchmark_emplace&lt;boost::container::flat_map&lt;int, int&gt;&gt;(gen);
+    }
   
     // Foo is a medium size object...
-    benchmark_emplace&lt;std::unordered_map&lt;Foo, Foo&gt;&gt;();
-    benchmark_emplace&lt;std::map&lt;Foo, Foo&gt;&gt;();
-    benchmark_emplace&lt;boost::container::flat_map&lt;Foo, Foo&gt;&gt;();
+    benchmark_emplace&lt;std::unordered_map&lt;Foo, Foo&gt;&gt;(&amp;Foo::Generate);
+    benchmark_emplace&lt;std::map&lt;Foo, Foo&gt;&gt;(&amp;Foo::Generate);
+    benchmark_emplace&lt;boost::container::flat_map&lt;Foo, Foo&gt;&gt;(&amp;Foo::Generate);
   
     // We also test big objects, different number of elements, and a lot of other fun stuff. 
 }</pre></noscript>
@@ -160,11 +166,11 @@ calls change by more than a factor two the time of this <em>for</em> statement?<
 
 <p>You decide to run the benchmark twice, as first benchmark and last one:</p>
 
-<noscript><pre>int main()
+<noscript><pre>void benchmark()
 {
-    the_awesome_benchmark(); 
-    a_lot_of_other_benchmarks();
-    the_awesome_benchmark();
+    std::cout &lt;&lt; &quot;first run&quot; &lt;&lt; benchmark_emplace&lt;std::unordered_map&lt;int, int&gt;&gt;(gen);
+    // a lot of other benchmarks (cf previous listing)....;
+    std::cout &lt;&lt; &quot;second run&quot; &lt;&lt; benchmark_emplace&lt;std::unordered_map&lt;int, int&gt;&gt;(gen);
 }</pre></noscript>
 <script src="https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=benchmark_cmp.cc"> </script>
 
@@ -187,21 +193,18 @@ to use them, but in this case you would like to only get the counters on a small
 <p>In order to use them in C/C++, the reference is the <a href="http://icl.cs.utk.edu/papi/">libpapi</a>. As it is a C library, I wrote a while ago a short C++ header file to make the basic usage of 
 the library easier: <a href="https://github.com/david-grs/papipp">libpapipp</a>. Let’s use it here to measure the number of instructions and cycles, to give us a bit more an idea on what is going on.</p>
 
-<noscript><pre>void benchmark_unordered_map_emplace()
+<noscript><pre>template &lt;typename Container, typename KeyGenerator&gt;
+void benchmark_emplace(KeyGenerator gen)
 {
-    std::unordered_map&lt;int, int&gt; um;
+    Container c;
     
      // we measure the hardware events total instructions and total cycles
     papi::event_set&lt;PAPI_TOT_INS, PAPI_TOT_CYC&gt; events;
-  
-    auto start = std::chrono::system_clock::now();
-    events.start_counters();
-  
-    for (int i = 0; i &lt; Iterations; ++i)
-        um.emplace(i, i);
     
+    events.start_counters();
+    for (int i = 0; i &lt; Iterations; ++i)
+        um.emplace(gen(), {});
     events.stop_counters();
-    auto end = std::chrono::system_clock::now();
     
     std::cout &lt;&lt; events.at&lt;0&gt;().counter() &lt;&lt; &quot; instructions, &quot; &lt;&lt; events.at&lt;0&gt;().counter() &lt;&lt; &quot; cycles&quot; &lt;&lt; std::endl;
 }</pre></noscript>
@@ -218,25 +221,20 @@ insertions and deletions in some containers, it is heavily fragmented, and one m
 <p>Let’s confirm that by measuring the time we spend in <em>malloc()</em> and <em>free()</em>. I updated for that an old <a href="https://github.com/david-grs/mtrace">C++ wrapper around the malloc hooks</a> that I developed 
 once to print the memory allocations. Here we don’t want to print them (there are millions!), but measure the time spent in them:</p>
 
-<noscript><pre>void benchmark_unordered_map_emplace()
+<noscript><pre>template &lt;typename Container, typename KeyGenerator&gt;
+void benchmark_emplace(KeyGenerator gen)
 {
-    std::unordered_map&lt;int, int&gt; um;
+    Container c;
    
     // this setups our malloc/free/realloc hooks
     mtrace&lt;malloc_chrono&gt; mt;
   
-    auto start = std::chrono::system_clock::now();
-    events.start_counters();
-  
     for (int i = 0; i &lt; Iterations; ++i)
-        um.emplace(i, i);
+        c.emplace(gen(), {});
     
-    events.stop_counters();
-    auto end = std::chrono::system_clock::now();
-    
-    std::cout &lt;&lt; &quot;time spent in malloc(): &quot; &lt;&lt; duration_cast&lt;milliseconds&gt;(chr.malloc_time()).count() &lt;&lt; &quot;ms\n&quot;
-              &lt;&lt; &quot;time spent in free(): &quot; &lt;&lt; duration_cast&lt;milliseconds&gt;(chr.free_time()).count() &lt;&lt; &quot;ms\n&quot;
-              &lt;&lt; &quot;time spent in realloc(): &quot; &lt;&lt; duration_cast&lt;milliseconds&gt;(chr.realloc_time()).count() &lt;&lt; &quot;ms&quot; &lt;&lt; std::endl;
+    std::cout &lt;&lt; &quot;time spent in malloc(): &quot; &lt;&lt; duration_cast&lt;milliseconds&gt;(mt.malloc_time()).count() &lt;&lt; &quot;ms\n&quot;
+              &lt;&lt; &quot;time spent in free(): &quot; &lt;&lt; duration_cast&lt;milliseconds&gt;(mt.free_time()).count() &lt;&lt; &quot;ms\n&quot;
+              &lt;&lt; &quot;time spent in realloc(): &quot; &lt;&lt; duration_cast&lt;milliseconds&gt;(mt.realloc_time()).count() &lt;&lt; &quot;ms&quot; &lt;&lt; std::endl;
 }</pre></noscript>
 <script src="https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=benchmark_mtrace.cc"> </script>
 
