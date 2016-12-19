@@ -45,8 +45,8 @@ Our *benchmark()* function is now something like this:
 
 The tragedy
 -----------
-*At some point*, you decide to re-order the function calls. You don't know why &mdash; just for convenience, because it is nicer like that. And boom. You didn't 
-expect *anything* to change because you were staring these numbers for hours... but you now get: 
+*At some point*, you decide to re-order the function calls. You don't know why &mdash; just for convenience. And boom. You didn't 
+expect *anything* to change because you have been at staring these numbers for hours... but now you get: 
 
 `100000 iterations of umap<int, int>::emplace() took 1143ms`
 
@@ -67,21 +67,15 @@ and you still get:
 
 Hardware counters are your friends 
 ----------------------------------
-In this kind of scenario, you have a quite limited set of options.
-
-First of all, you might think about looking at the disassembly. I know that we all love the [GCC explorer](http://gcc.godbolt.org), but when you are benchmarking 
-containers, the assembly code will be very long. Also, reodering function calls is not a small change, so the entire assembly code will have changed and it will hard to compare that by hand.
-
-The most powerful tool you could use in this case if your intuition does not guide you towards the light is a feature offered by your CPU, called hardware counters. *perf* is the simplest way 
-to use them, but in this case you would like to only get the counters on a small piece of C++ code, not the entire execution of your program.
-
-In order to use them in C/C++, the reference is the [libpapi](http://icl.cs.utk.edu/papi/). As it is a C library, I wrote a while ago a short C++ header file to make the basic usage of 
-the library easier: [libpapipp](https://github.com/david-grs/papipp). Let's use it here to measure the number of instructions and cycles, to give us a bit more an idea on what is going on.
+In this kind of scenario, you have a quite limited set of options. You might think about looking at the disassembly. I know that we all love 
+the [GCC explorer](http://gcc.godbolt.org), but when you are benchmarking containers, the assembly code will be very long.
+ 
+To get more insights, I like using hardware counters. I wrote a while ago a short C++ library, [libpapipp](https://github.com/david-grs/papipp), that records
+hardware events, based on the reference C library [libpapi](http://icl.cs.utk.edu/papi/). Let's use it here to measure the number of instructions and cycles.
 
 {% gist david-grs/38b359aa9f20d7d27444c16c9e411855 benchmark_papipp.cc %} 
 <br />
-This allows us to see that the number of instructions executed is actually 25% higher when we reorder the functions. This is a good indication, as the code is identical, we know that actually
-*more* code is executed
+This allows us to see that the number of instructions executed is ~25% higher in the second run. As our code is identical, it means that *more* code is executed.
 
 
 
