@@ -2,7 +2,7 @@
 layout: post
 title:  "Heap fragmentation or how my micro-benchmark went wrong"
 author: David Gross
-date:   2016-12-19 21:56
+date:   2016-12-28 16:56
 ---
 
 Micro-benchmarking code always looks simple: a few variables, a small *for* loop and two *std::chrono* calls. I think this simplicity is an illusion.
