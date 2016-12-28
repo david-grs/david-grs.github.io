@@ -32,7 +32,7 @@ The simplest &micro;-benchmark
 This is a very simple &mdash; and the most boring I could find &mdash; micro-benchmark:
 {% gist david-grs/38b359aa9f20d7d27444c16c9e411855 awesome_benchmark.cc %} 
 <br />
-This gives us the output: `100000 iterations of umap<int, int>::emplace() took 565ms`. Awesome. This is exactly what we wanted to know.
+This gives us the output: `100000 iterations of unordered_set<int>::emplace() took 565ms`. Awesome. This is exactly what we wanted to know.
 
 A few hours later, we added a lot of other small functions like this one. We are now measuring the time of the *emplace* operation for different containers,
 with different contained type &mdash; to change their size and the cost of the move, copy, construction and destruction operations &mdash; and with different
@@ -45,67 +45,62 @@ Our *benchmark()* function is now something like this:
 
 The tragedy
 -----------
-*At some point*, you decide to re-order the function calls. You don't know why &mdash; just for convenience. And boom. You didn't 
-expect *anything* to change because you have been at staring these numbers for hours... but now you get: 
+*At some point*, you decide to re-order the function calls &mdash; just for convenience. And boom. You didn't 
+expect *anything* to change because you have been at staring these numbers for hours... but your initial benchmark
+is now *twice slower*: 
 
-`100000 iterations of umap<int, int>::emplace() took 1143ms`
+`100000 iterations of unordered_set<int>::emplace() took 1143ms`
 
-How come? You run again and get the same results. Nothing changed. You checkout the previous commit and test again: it is fixed. How can a simple re-ordering of function
-calls change by more than a factor two the time of this *for* statement?
+How come? You run again and get the same results. You checkout the previous commit and test again: it is fixed. How can a simple re-ordering of calls 
+slow down a 5-lines function?
 
 You decide to run the benchmark twice, as first benchmark and last one:
 
 {% gist david-grs/38b359aa9f20d7d27444c16c9e411855 benchmark_cmp.cc %} 
 <br />
-and you still get:
+... which outputs:
 
-    first run:   100000 iterations of umap<int, int>::emplace() took 565ms
-    second run: 100000 iterations of umap<int, int>::emplace() took 1143ms
-
-
-
-
-Hardware counters are your friends 
-----------------------------------
-In this kind of scenario, you have a quite limited set of options. You might think about looking at the disassembly. I know that we all love 
-the [GCC explorer](http://gcc.godbolt.org), but when you are benchmarking containers, the assembly code will be very long.
- 
-To get more insights, I like using hardware counters. I wrote a while ago a short C++ library, [libpapipp](https://github.com/david-grs/papipp), that records
-hardware events, based on the reference C library [libpapi](http://icl.cs.utk.edu/papi/). Let's use it here to measure the number of instructions and cycles.
-
-{% gist david-grs/38b359aa9f20d7d27444c16c9e411855 benchmark_papipp.cc %} 
-<br />
-This allows us to see that the number of instructions executed is ~25% higher in the second run. As our code is identical, it means that *more* code is executed.
+    first run:   100000 iterations of unordered_set<int>::emplace() took 565ms
+    second run: 100000 iterations of unordered_set<int>::emplace() took 1143ms
 
 
 
 Heap fragmentation
 ------------------
-As you guessed because it is the title of this article, the difference comes from the heap. At the beginning of the micro-benchmark, the heap is in a *clean* state, while after a lot of 
-container operations &mdash; insertions and deletions &mdash; it is heavily fragmented, and one malloc() call might take much more time than expected. 
+As you guessed because it is the title of this article, the difference is due to the heap.
 
-Let's confirm that by measuring the time we spend in *malloc()* and *free()*. I updated for that an old [C++ wrapper around the malloc hooks](https://github.com/david-grs/mtrace) that I developed 
-to follow each memory allocation &mdash; by printing them. Here we don't want to print them (there are millions!), but measure the time spent in these functions:
+First of all, let's confirm our hypothesis by actually measuring the time spent during the heap operations &mdash; *malloc*, *free* and *realloc*.
+
+I updated for that an old [C++ wrapper around the malloc hooks](https://github.com/david-grs/mtrace) that I developed a while ago to follow each memory allocation 
+&mdash; by printing them. Here we don't want to print them (there are millions!), but measure the time spent in these functions:
 
 {% gist david-grs/38b359aa9f20d7d27444c16c9e411855 benchmark_mtrace.cc %} 
 <br />
-... which gives us immediately the answer:
-    
-    first run: benchmark_unordered_map_emplace() took 565ms
+And this confirms what we thought:
+
+    first run: benchmark_unordered_set_emplace() took 565ms
     time spent in malloc(): 231ms
     time spent in free(): 1ms
     time spent in realloc(): 0ms
 
-    second run: benchmark_unordered_map_emplace() took 1143ms
+    second run: benchmark_unordered_set_emplace() took 1143ms
     time spent in malloc(): 916ms
     time spent in free(): 94ms
     time spent in realloc(): 0ms
 
-We were spending almost 90% of the CPU time in *malloc()* and *free()* the second run of the benchmark! To get even more in depth, the GNU extension offers  *malloc_info* that returns
-the exhaustive list of bins &mdash; chunks that have been freed &mdash; by category (size, unsorted, fast). 
+<br />
+90% of the CPU time is spent in *malloc* and *free* on the second run of the benchmark! To go even more in depth, the GNU extension offers *malloc_info*. This 
+function returns the list of bins &mdash; chunks that have been freed &mdash; by category (size, unsorted, fast). Let's insert one call to *malloc_info* before 
+each benchmark run:
 
-    <malloc version="1">
-    <heap nr="0">
+
+    before the first run:
+    <sizes>
+    </sizes>
+    <total type="fast" count="0" size="0"/>
+    <total type="rest" count="0" size="0"/>
+
+    before the second run:
     <sizes>
     <size from="33" to="48" total="383999952" count="7999999"/>
     <size from="49" to="64" total="64" count="1"/>
@@ -115,24 +110,36 @@ the exhaustive list of bins &mdash; chunks that have been freed &mdash; by categ
     <total type="fast" count="8000000" size="384000016"/>
     <total type="rest" count="3999997" size="1156000445"/>
 
+<br />
+What is very particular in this micro-benchmark is that we have millions of successive memory allocations: small allocated chunks from *std::unordered_set&lt;int&gt;::emplace*,
+big ones from *boost::container::flat_set*, etc. Then, the benchmark is done, the block ends and the several containers go out of scope and are *destroyed*.
 
-What happened in our case is that the destructors or several big containers just freed millions of chunks of different sizes. Remember that our code:
+This leads to a very specific heap state: 
+
+ * Millions of chunks are successively destroyed
+ * They were also allocated successively, so quite likely to be contiguous and in the same pages
+ * These freed chunks represent almost all our memory allocations
+
+All freed chunks are merged together, the bins linked lists are cleared, the memory released. And this takes *forever*.
+
+Remember our code:
 {% gist david-grs/38b359aa9f20d7d27444c16c9e411855 benchmark_cmp2.cc %} 
 <br />
-On the next *malloc()* call, the several *freelists* will be merged. If we introduce one small *malloc()* call before our second run of the benchmark and run *malloc_info* again, we
-now get a heap in a clean state, and the difference of time immediately disappears.
+If we introduce one *malloc(1)* call before our second run of the benchmark and run *malloc_info* again, we now get a heap in a clean state, and the time difference 
+is gone. However, this is not a clean or portable solution.
 
-    <malloc version="1">
-    <heap nr="0">
-    <sizes>
-    </sizes>
-    <total type="fast" count="0" size="0"/>
-    <total type="rest" count="0" size="0"/>
+The unfortunate part, is that there is no nice and clean solution. All the possible solutions I can think of are very dependent to the *malloc* implementation, and are made on several assumptions. 
+For example, you could be simply rearrange the code to not destroy any of the benchmarked containers before 
+the end of all benchmarks. This means that you only allocate, but don't free any memory, which will prevent from the symptom we got earlier, but maybe not from another side effet. 
 
-
-As a solution, we could simply rearrange our code to not destroy any containers before the end of all benchmarks:
+In our simple case, we could simply change the code by removing the blocks and leave the inlined function calls in the single *benchmark* function:
 {% gist david-grs/38b359aa9f20d7d27444c16c9e411855 benchmark_cmp3.cc %} 
 <br />
-Micro-benchmarking is hard. Be very careful while doing it ; this kind of mistakes or wrong measurements can happen, even if you are using Google Benchmark ;)
+The only good solution &mdash; i.e. not based on any assumptions regarding the *malloc* implementation &mdash; would be to separate the different benchmarks between different applications
+or application runs. 
 
+That's all! I ran all my tests on my Ubuntu 14.04, based on the GLibC 2.19 (yes, this setup is getting old...). You can find a simplified version of the benchmark code 
+[on my github](https://github.com/david-grs/heap_frag). Don't be surprised if you get different results, everything in this article is implementation dependant.
+
+Enjoy your holidays, and your micro-benchmarks!
 
