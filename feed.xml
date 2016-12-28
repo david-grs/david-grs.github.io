@@ -6,9 +6,235 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Thu, 24 Nov 2016 15:12:26 +0100</pubDate>
-    <lastBuildDate>Thu, 24 Nov 2016 15:12:26 +0100</lastBuildDate>
+    <pubDate>Wed, 28 Dec 2016 22:34:37 +0100</pubDate>
+    <lastBuildDate>Wed, 28 Dec 2016 22:34:37 +0100</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
+    
+      <item>
+        <title>Heap fragmentation or how my micro-benchmark went wrong</title>
+        <description>&lt;p&gt;Micro-benchmarking code always looks simple: a few variables, a small &lt;em&gt;for&lt;/em&gt; loop and two &lt;em&gt;std::chrono&lt;/em&gt; calls. I think this simplicity is an illusion.
+Micro-benchmarking is either complicated or inaccurate. &lt;/p&gt;
+
+&lt;p&gt;You have to be careful that the compiler does not optimize out the code you are timing, accurately measure the time and know your time resolution,
+all the caches are usually hot (as you loop over the same operation) and you will get a totally different cache hit rate than in production, a “production-like” set of inputs 
+has to be generated — without affecting the resuts of the benchmark of course! —, on each iteration of the benchmark 
+the state of your object is changing but should still allow the benchmark to continue, etc. It is really hard.&lt;/p&gt;
+
+&lt;p&gt;And this is why I usually don’t micro-benchmark: it is too hard for what it is ; you will get numbers and finally be disappointed or puzzled 
+because you will not get the same latencies in production.&lt;/p&gt;
+
+&lt;p&gt;I prefer measuring the impact of my code changes directly in production — or in a production-like environment. The initial cost of setting up such timing 
+system might be higher, but on the long term you get a lot of benefits from it. Lots of code changes can simply not be micro-benchmarked at all. In his 
+talk &lt;a href=&quot;https://www.youtube.com/watch?v=Qq_WaiwzOtI&quot;&gt;&lt;em&gt;Optimization Tips - Mo’ Hustle Mo’ Problems&lt;/em&gt;&lt;/a&gt;, Andrei Alexandrescu is presenting the speed gain of 
+not inlining the destructor of an object — by simply defining an empty destructor in the source file instead of the default one. Good luck 
+to micro-benchmark that, and if you actually do it &lt;em&gt;somehow&lt;/em&gt;, I guess you will get the opposite result, as having the &lt;em&gt;inlined&lt;/em&gt; call will save some instructions
+and the instruction cache won’t be polluted.&lt;/p&gt;
+
+&lt;p&gt;This post is about my last adventure with a micro-benchmark. &lt;/p&gt;
+
+&lt;h2 id=&quot;the-simplest-micro-benchmark&quot;&gt;The simplest µ-benchmark&lt;/h2&gt;
+&lt;p&gt;This is a very simple — and the most boring I could find — micro-benchmark:&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;void benchmark_unordered_set_emplace()
+{
+    std::unordered_set&amp;lt;int&amp;gt; uset;
+    
+    auto start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i &amp;lt; Iterations; ++i)
+        uset.emplace(i, i);
+    auto end = std::chrono::high_resolution_clock::now();
+    
+    std::cout &amp;lt;&amp;lt; Iterations &amp;lt;&amp;lt; &amp;quot; iterations of unordered_set&amp;lt;int&amp;gt;::emplace() took &amp;quot; 
+              &amp;lt;&amp;lt; std::chrono::duration_cast&amp;lt;std::chrono::milliseconds&amp;gt;(end - start).count() 
+              &amp;lt;&amp;lt; &amp;quot;ms&amp;quot; &amp;lt;&amp;lt; std::endl;
+}&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=awesome_benchmark.cc&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+This gives us the output: &lt;code&gt;100000 iterations of unordered_set&amp;lt;int&amp;gt;::emplace() took 565ms&lt;/code&gt;. Awesome. This is exactly what we wanted to know.&lt;/p&gt;
+
+&lt;p&gt;A few hours later, we added a lot of other small functions like this one. We are now measuring the time of the &lt;em&gt;emplace&lt;/em&gt; operation for different containers,
+with different contained type — to change their size and the cost of the move, copy, construction and destruction operations — and with different
+number of elements in the container. We even added a layer of template because it looks better!&lt;/p&gt;
+
+&lt;p&gt;Our &lt;em&gt;benchmark()&lt;/em&gt; function is now something like this:&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;void benchmark()
+{
+    {
+        std::mt19937 gen(seed);
+        std::uniform_int_distribution&amp;lt;&amp;gt; rng;
+        auto gen = [&amp;amp;]() { return rng(gen); };
+        
+        benchmark_emplace&amp;lt;std::unordered_set&amp;lt;int&amp;gt;&amp;gt;(gen);
+        benchmark_emplace&amp;lt;std::set&amp;lt;int&amp;gt;&amp;gt;(gen);
+        benchmark_emplace&amp;lt;boost::container::flat_set&amp;lt;int&amp;gt;&amp;gt;(gen);
+    }
+  
+    {
+        // Foo is a medium size object...
+        benchmark_emplace&amp;lt;std::unordered_set&amp;lt;Foo&amp;gt;&amp;gt;(&amp;amp;Foo::Generate);
+        benchmark_emplace&amp;lt;std::set&amp;lt;Foo&amp;gt;&amp;gt;(&amp;amp;Foo::Generate);
+        benchmark_emplace&amp;lt;boost::container::flat_set&amp;lt;Foo&amp;gt;&amp;gt;(&amp;amp;Foo::Generate);
+
+        // We also test big objects, different number of elements, and a lot of other fun stuff. 
+    }
+}&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=even_more_awesome_benchmark.cc&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;the-tragedy&quot;&gt;The tragedy&lt;/h2&gt;
+&lt;p&gt;&lt;em&gt;At some point&lt;/em&gt;, you decide to re-order the function calls — just for convenience. And boom. You didn’t 
+expect &lt;em&gt;anything&lt;/em&gt; to change because you have been at staring these numbers for hours… but your initial benchmark
+is now &lt;em&gt;twice slower&lt;/em&gt;: &lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;100000 iterations of unordered_set&amp;lt;int&amp;gt;::emplace() took 1143ms&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;How come? You run again and get the same results. You checkout the previous commit and test again: it is fixed. How can a simple re-ordering of calls 
+slow down a 5-lines function?&lt;/p&gt;
+
+&lt;p&gt;You decide to run the benchmark twice, as first benchmark and last one:&lt;/p&gt;
+
+&lt;noscript&gt;&lt;pre&gt;void benchmark()
+{
+    std::cout &amp;lt;&amp;lt; &amp;quot;first run&amp;quot; &amp;lt;&amp;lt; benchmark_emplace&amp;lt;std::unordered_set&amp;lt;int&amp;gt;&amp;gt;(gen);
+    
+    {
+        // a lot of other benchmarks (cf previous listing)...
+    }
+    
+    std::cout &amp;lt;&amp;lt; &amp;quot;second run&amp;quot; &amp;lt;&amp;lt; benchmark_emplace&amp;lt;std::unordered_set&amp;lt;int&amp;gt;&amp;gt;(gen);
+}&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=benchmark_cmp.cc&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+… which outputs:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;first run:   100000 iterations of unordered_set&amp;lt;int&amp;gt;::emplace() took 565ms
+second run: 100000 iterations of unordered_set&amp;lt;int&amp;gt;::emplace() took 1143ms
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&quot;heap-fragmentation&quot;&gt;Heap fragmentation&lt;/h2&gt;
+&lt;p&gt;As you guessed because it is the title of this article, the difference is due to the heap.&lt;/p&gt;
+
+&lt;p&gt;First of all, let’s confirm our hypothesis by actually measuring the time spent during the heap operations — &lt;em&gt;malloc&lt;/em&gt;, &lt;em&gt;free&lt;/em&gt; and &lt;em&gt;realloc&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;I updated for that an old &lt;a href=&quot;https://github.com/david-grs/mtrace&quot;&gt;C++ wrapper around the malloc hooks&lt;/a&gt; that I developed a while ago to follow each memory allocation 
+— by printing them. Here we don’t want to print them (there are millions!), but measure the time spent in these functions:&lt;/p&gt;
+
+&lt;noscript&gt;&lt;pre&gt;template &amp;lt;typename Container, typename KeyGenerator&amp;gt;
+void benchmark_emplace(KeyGenerator gen)
+{
+    Container c;
+   
+    // this setups our malloc/free/realloc hooks
+    mtrace&amp;lt;malloc_chrono&amp;gt; mt;
+  
+    for (int i = 0; i &amp;lt; Iterations; ++i)
+        c.emplace(gen());
+    
+    std::cout &amp;lt;&amp;lt; &amp;quot;time spent in malloc(): &amp;quot; &amp;lt;&amp;lt; duration_cast&amp;lt;milliseconds&amp;gt;(mt.malloc_time()).count() &amp;lt;&amp;lt; &amp;quot;ms\n&amp;quot;
+              &amp;lt;&amp;lt; &amp;quot;time spent in free(): &amp;quot; &amp;lt;&amp;lt; duration_cast&amp;lt;milliseconds&amp;gt;(mt.free_time()).count() &amp;lt;&amp;lt; &amp;quot;ms\n&amp;quot;
+              &amp;lt;&amp;lt; &amp;quot;time spent in realloc(): &amp;quot; &amp;lt;&amp;lt; duration_cast&amp;lt;milliseconds&amp;gt;(mt.realloc_time()).count() &amp;lt;&amp;lt; &amp;quot;ms&amp;quot; &amp;lt;&amp;lt; std::endl;
+}&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=benchmark_mtrace.cc&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+And this confirms what we thought:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;first run: benchmark_unordered_set_emplace() took 565ms
+time spent in malloc(): 231ms
+time spent in free(): 1ms
+time spent in realloc(): 0ms
+
+second run: benchmark_unordered_set_emplace() took 1143ms
+time spent in malloc(): 916ms
+time spent in free(): 94ms
+time spent in realloc(): 0ms
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;br /&gt;
+90% of the CPU time is spent in &lt;em&gt;malloc&lt;/em&gt; and &lt;em&gt;free&lt;/em&gt; on the second run of the benchmark! To go even more in depth, the GNU extension offers &lt;em&gt;malloc_info&lt;/em&gt;. This 
+function returns the list of bins — chunks that have been freed — by category (size, unsorted, fast). Let’s insert one call to &lt;em&gt;malloc_info&lt;/em&gt; before 
+each benchmark run:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;before the first run:
+&amp;lt;sizes&amp;gt;
+&amp;lt;/sizes&amp;gt;
+&amp;lt;total type=&quot;fast&quot; count=&quot;0&quot; size=&quot;0&quot;/&amp;gt;
+&amp;lt;total type=&quot;rest&quot; count=&quot;0&quot; size=&quot;0&quot;/&amp;gt;
+
+before the second run:
+&amp;lt;sizes&amp;gt;
+&amp;lt;size from=&quot;33&quot; to=&quot;48&quot; total=&quot;383999952&quot; count=&quot;7999999&quot;/&amp;gt;
+&amp;lt;size from=&quot;49&quot; to=&quot;64&quot; total=&quot;64&quot; count=&quot;1&quot;/&amp;gt;
+&amp;lt;size from=&quot;33&quot; to=&quot;33&quot; total=&quot;99&quot; count=&quot;3&quot;/&amp;gt;
+&amp;lt;unsorted from=&quot;145&quot; to=&quot;1009&quot; total=&quot;1156000346&quot; count=&quot;3999994&quot;/&amp;gt;
+&amp;lt;/sizes&amp;gt;
+&amp;lt;total type=&quot;fast&quot; count=&quot;8000000&quot; size=&quot;384000016&quot;/&amp;gt;
+&amp;lt;total type=&quot;rest&quot; count=&quot;3999997&quot; size=&quot;1156000445&quot;/&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;br /&gt;
+What is very particular in this micro-benchmark is that we have millions of successive memory allocations: small allocated chunks from &lt;em&gt;std::unordered_set&amp;lt;int&amp;gt;::emplace&lt;/em&gt;,
+big ones from &lt;em&gt;boost::container::flat_set&lt;/em&gt;, etc. Then, the benchmark is done, the block ends and the several containers go out of scope and are &lt;em&gt;destroyed&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;This leads to a very specific heap state: &lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Millions of chunks are successively destroyed&lt;/li&gt;
+  &lt;li&gt;They were also allocated successively, so quite likely to be contiguous and in the same pages&lt;/li&gt;
+  &lt;li&gt;These freed chunks represent almost all our memory allocations&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;All freed chunks are merged together, the bins linked lists are cleared, the memory released. And this takes &lt;em&gt;forever&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;Remember our code:&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;void benchmark()
+{
+    std::cout &amp;lt;&amp;lt; &amp;quot;first run&amp;quot; &amp;lt;&amp;lt; benchmark_emplace&amp;lt;std::unordered_set&amp;lt;int&amp;gt;&amp;gt;(gen);
+    
+    {
+        // a lot of other benchmarks (cf previous listing)...
+        // several destructors of big containers are called on the next line
+    }
+    
+    std::cout &amp;lt;&amp;lt; &amp;quot;second run&amp;quot; &amp;lt;&amp;lt; benchmark_emplace&amp;lt;std::unordered_set&amp;lt;int&amp;gt;&amp;gt;(gen);
+}&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=benchmark_cmp2.cc&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+If we introduce one &lt;em&gt;malloc(1)&lt;/em&gt; call before our second run of the benchmark and run &lt;em&gt;malloc_info&lt;/em&gt; again, we now get a heap in a clean state, and the time difference 
+is gone. However, this is not a clean or portable solution.&lt;/p&gt;
+
+&lt;p&gt;The unfortunate part, is that there is no nice and clean solution. All the possible solutions I can think of are very dependent to the &lt;em&gt;malloc&lt;/em&gt; implementation, and are made on several assumptions. 
+For example, you could be simply rearrange the code to not destroy any of the benchmarked containers before 
+the end of all benchmarks. This means that you only allocate, but don’t free any memory, which will prevent from the symptom we got earlier, but maybe not from another side effet. &lt;/p&gt;
+
+&lt;p&gt;In our simple case, we could simply change the code by removing the blocks and leave the inlined function calls in the single &lt;em&gt;benchmark&lt;/em&gt; function:&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;void benchmark()
+{
+    std::cout &amp;lt;&amp;lt; &amp;quot;first run&amp;quot; &amp;lt;&amp;lt; benchmark_emplace&amp;lt;std::unordered_set&amp;lt;int&amp;gt;&amp;gt;(gen);
+    // a lot of other benchmarks (cf previous listing)...
+    std::cout &amp;lt;&amp;lt; &amp;quot;second run&amp;quot; &amp;lt;&amp;lt; benchmark_emplace&amp;lt;std::unordered_set&amp;lt;int&amp;gt;&amp;gt;(gen);
+}&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/david-grs/38b359aa9f20d7d27444c16c9e411855.js?file=benchmark_cmp3.cc&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;br /&gt;
+The only good solution — i.e. not based on any assumptions regarding the &lt;em&gt;malloc&lt;/em&gt; implementation — would be to separate the different benchmarks between different applications
+or application runs. &lt;/p&gt;
+
+&lt;p&gt;That’s all! I ran all my tests on my Ubuntu 14.04, based on the GLibC 2.19 (yes, this setup is getting old…). You can find a simplified version of the benchmark code 
+&lt;a href=&quot;https://github.com/david-grs/heap_frag&quot;&gt;on my github&lt;/a&gt;. Don’t be surprised if you get different results, everything in this article is implementation dependant.&lt;/p&gt;
+
+&lt;p&gt;Enjoy your holidays, and your micro-benchmarks!&lt;/p&gt;
+
+</description>
+        <pubDate>Wed, 28 Dec 2016 16:56:00 +0100</pubDate>
+        <link>http://david-grs.github.io/heap_fragmentation_micro_benchmark</link>
+        <guid isPermaLink="true">http://david-grs.github.io/heap_fragmentation_micro_benchmark</guid>
+        
+        
+      </item>
     
       <item>
         <title>Why you should use Boost.MultiIndex (Part II)</title>
@@ -256,7 +482,7 @@ last bits and nanoseconds: &lt;/p&gt;
         session,
         const_mem_fun&amp;lt;session, std::experimental::string_view, &amp;amp;session::username&amp;gt;,
         const_mem_fun&amp;lt;session, std::experimental::string_view, &amp;amp;session::hostname&amp;gt;
-      &amp;gt;
+      &amp;gt;,
       composite_key_hash&amp;lt;
         std::hash&amp;lt;std::experimental::string_view&amp;gt;,
         std::hash&amp;lt;std::experimental::string_view&amp;gt;
