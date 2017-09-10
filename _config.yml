@@ -4,7 +4,6 @@ gems:
   - jekyll-paginate
   - jekyll-redirect-from
 
-markdown: redcarpet
 highlighter: pygments
 
 title: "Thoughts from a Wall Street developer"

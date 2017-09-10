@@ -11,7 +11,7 @@ gave it a shot. Here is a short summary of this adventure...
 To start, simply sign in with your GitHub account on [Travis CI](https://travis-ci.org/), this will import all your repositories. From there, just enable one of them 
 and add the following *.travis.yml* to your repo:
 
-```yaml
+{% highlight yaml %}
 dist: trusty
 sudo: false
 language: cpp
@@ -19,7 +19,7 @@ language: cpp
 script:
   - cmake .
   - cmake --build .
-```
+{% endhighlight  %}
 
 On *git push*, it will automatically trigger your first Travis build. A few things though:
 
@@ -33,7 +33,7 @@ GCC 6 & CLang 5
 ---------------
 Switching to GCC 5 is quite simple &mdash; Jason explains in his video how to change the *.travis.yml*. The one for GCC 6 is almost identical:
 
-```yaml
+{% highlight yaml %}
 dist: trusty
 sudo: false
 language: cpp
@@ -48,12 +48,12 @@ addons:
 script:
   - CXX=/usr/bin/g++-6 CC=/usr/bin/gcc-6 cmake .
   - cmake --build . 
-```
+{% endhighlight  %}
 
 Here, we are using the *apt* addon to install the *g++-6* package. You can add any packages or libraries from which your project depends. Alternatively, 
 you can also use the last *clang* release to build your project:
 
-```yaml
+{% highlight yaml %}
 dist: trusty
 sudo: false
 language: cpp
@@ -68,7 +68,7 @@ addons:
 script:
   - CXX=/usr/bin/clang++-5.0 CC=/usr/bin/clang-5.0 cmake .
   - cmake --build . 
-```
+{% endhighlight  %}
 <br />
 
 
@@ -78,7 +78,7 @@ Google Test
 GTest is not handled by default &mdash; and we cannot blame Travis for that, but more Ubuntu that decided to stop distributing the library package. This means that your
 CMake *FindPackage* will fail:
 
-```yaml
+{% highlight yaml %}
 CMake Error at /usr/share/cmake-3.2/Modules/FindPackageHandleStandardArgs.cmake:138 (message):
   Could NOT find GTest (missing: GTEST_LIBRARY GTEST_MAIN_LIBRARY)
 Call Stack (most recent call first):
@@ -87,7 +87,7 @@ Call Stack (most recent call first):
 
   CMakeLists.txt:21 (find_package)
 -- Configuring incomplete, errors occurred!
-```
+{% endhighlight  %}
 
 I looked around and found that people solves this in various ways:
 
@@ -101,7 +101,7 @@ Add Google Test as a submodule:
 
 Then, create a *gtest.cmake* file with this content:
 
-```yaml
+{% highlight yaml %}
 set(GOOGLETEST_ROOT gtest/googletest CACHE STRING "Google Test source root")
 
 include_directories(SYSTEM
@@ -119,20 +119,20 @@ foreach(_source ${GOOGLETEST_SOURCES})
 endforeach()
 
 add_library(gtest ${GOOGLETEST_SOURCES})
-```
+{% endhighlight  %}
 
 Note the *SYSTEM* keyword in *include_directories*. Without it, you will get spammed on every build by all the warnings from GTest, especially if you build with *-Wall -Wextra etc*. 
 
 Last step, include it in your main CMakeLists.txt and link to *gtest*:
 
-```yaml
+{% highlight yaml %}
 cmake_minimum_required(VERSION ...)
 
 project(...)
 include(gtest.cmake)
 ...
 target_link_libraries(tests gtest pthread)
-``` 
+{% endhighlight  %}
 
 
 
@@ -142,7 +142,7 @@ As you did for Travis CI, you need to sign in with your GitHub account on [Cover
 
 Now, edit your *.travis.yml* to install and run *cpp-coveralls* &mdash; after the unit tests passed:
 
-```yaml
+{% highlight yaml %}
 dist: trusty
 sudo: false
 language: cpp
@@ -164,7 +164,7 @@ script:
 
 after_success:
   - coveralls --root . -E ".*gtest.*" -E ".*CMakeFiles.*" 
-```
+{% endhighlight  %}
 
 A few things to note here:
   * We excluded Google Test from the coverage with *-E ".\*gtest.\*"*
@@ -174,13 +174,13 @@ A few things to note here:
 Now we need to enable the *gcda* files generation &mdash; needed by *lcov* &mdash; in our toolchain. This is done by adding
 the *--coverage* flag to both compiler and linker:
 
-```yaml
+{% highlight yaml %}
 SET(COVERAGE OFF CACHE BOOL "Coverage")
 ...
 if (COVERAGE)
     target_compile_options(tests PRIVATE --coverage)
     target_link_libraries(tests PRIVATE --coverage)
 endif()
-```
+{% endhighlight  %}
 
 
