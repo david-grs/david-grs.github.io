@@ -133,7 +133,7 @@ include(gtest.cmake)
 ...
 target_link_libraries(tests gtest pthread)
 {% endhighlight  %}
-
+<br />
 
 
 Coveralls
