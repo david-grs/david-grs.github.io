@@ -5,7 +5,7 @@ author: David Gross
 date:   2017-09-10 14:52
 ---
 
-This week, Jason Turner presented [an intro to Travis CI](https://www.youtube.com/watch?v=3ulKzD2cmSw). I never used Travis CI but wanted to try for a while, so I
+This week, Jason Turner presented [an intro to Travis CI](https://www.youtube.com/watch?v=3ulKzD2cmSw). I've never used it but have wanted to try for a while, so I
 gave it a shot. Here is a short summary of this adventure...
 
 To start, simply sign in with your GitHub account on [Travis CI](https://travis-ci.org/), this will import all your repositories. From there, just enable one of them 
@@ -25,7 +25,7 @@ On *git push*, it will automatically trigger your first Travis build. A few thin
 
   1. The default GCC version is quite old &mdash; 4.8, no C++14 support
   2. Google Test won't work out of the box
-  3. This doesn't include coverage report
+  3. This doesn't include the coverage report
 
 
 
@@ -50,7 +50,7 @@ script:
   - cmake --build . 
 {% endhighlight  %}
 
-Here, we are using the *apt* addon to install the *g++-6* package. You can add any packages or libraries from which your project depends. Alternatively, 
+Here, we are using the *apt* add-on to install the *g++-6* package. You can add any packages or libraries on which your project depends. Alternatively, 
 you can also use the last *clang* release to build your project:
 
 {% highlight yaml %}
@@ -89,17 +89,17 @@ Call Stack (most recent call first):
 -- Configuring incomplete, errors occurred!
 {% endhighlight  %}
 
-I looked around and found that people solves this in various ways:
+I looked around and found that people solve this in various ways:
 
- 1. With a pre-build bash script that installs the *libgtest-dev* package, build it and copy the libraries &mdash; this is quite hacky and fragile as it depends on the various system paths and library names.
+ 1. With a pre-build bash script that installs the *libgtest-dev* package, builds it and copies the libraries &mdash; this is quite hacky and fragile as it depends on the various system paths and library names.
  2. With the GTest source in the repo &mdash; importing the whole source tree isn't necessary
  3. By adding GTest as a submodule &mdash; this is the way to go
 
 
-Add Google Test as a submodule: 
+Add GTest as a submodule: 
 ```git submodule add git@github.com:google/googletest.git gtest```
 
-Then, create a *gtest.cmake* file with this content:
+Then create a *gtest.cmake* file with this content:
 
 {% highlight yaml %}
 set(GOOGLETEST_ROOT gtest/googletest CACHE STRING "Google Test source root")
@@ -140,7 +140,7 @@ Coveralls
 ---------
 As you did for Travis CI, you need to sign in with your GitHub account on [Coveralls](http://coveralls.io/) and enable your project. 
 
-Now, edit your *.travis.yml* to install and run *cpp-coveralls* &mdash; after the unit tests passed:
+Now edit your *.travis.yml* to install and run *cpp-coveralls*:
 
 {% highlight yaml %}
 dist: trusty
@@ -165,13 +165,15 @@ script:
 after_success:
   - coveralls --root . -E ".*gtest.*" -E ".*CMakeFiles.*" 
 {% endhighlight  %}
-
+<br />
 A few things to note here:
-  * We excluded Google Test from the coverage with *-E ".\*gtest.\*"*
-  * *-DCOVERAGE=1* is passed to CMake &mdash; locally, you might not want to enable coverage all the time
-  * Don't forget to run your tests!
 
-Now we need to enable the *gcda* files generation &mdash; needed by *lcov* &mdash; in our toolchain. This is done by adding
+   1. We excluded Google Test from the coverage with *-E ".\*gtest.\*"*
+   2. *-DCOVERAGE=1* is passed to CMake &mdash; locally, you might not want to enable coverage 
+   3. Don't forget to run your unit tests if you want them in the coverage report
+
+
+Finally, we need to enable the *gcda* files generation &mdash; needed by *lcov* &mdash; in our toolchain. This is done by adding
 the *--coverage* flag to both compiler and linker:
 
 {% highlight yaml %}
