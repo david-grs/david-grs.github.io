@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta charset="utf-8">
+  <!-- (1) Optimize for mobile versions: http://goo.gl/EOpFl -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- (1) force latest IE rendering engine: bit.ly/1c8EiC9 -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+  <title>Clang, Travis, CMake, GTest & Coveralls</title>
+  <meta name="description" content="This week, Jason Turner presented an intro to Travis CI. I never used Travis CI but wanted to try for a while, so Igave it a shot. Here is a short summary of this adventure..." />
+
+  <meta name="HandheldFriendly" content="True" />
+  <meta name="MobileOptimized" content="320" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  
+  <meta property="og:site_name" content="Thoughts from a Wall Street developer" />
+  <meta property="og:title" content="Clang, Travis, CMake, GTest & Coveralls"/>
+  
+  <meta property="og:description" content="This week, Jason Turner presented an intro to Travis CI. I never used Travis CI but wanted to try for a while, so Igave it a shot. Here is a short summary of this adventure..." />
+  
+  <meta property="og:image" content="http://david-grs.github.io" />
+  <meta property="og:url" content="http://david-grs.github.io/cpp-clang-travis-cmake-gtest-coveralls" >
+  <meta property="og:type" content="blog" />
+  <meta property="article:published_time" content="2017-09-10T14:52:00+02:00">
+
+  <link rel="canonical" href="http://david-grs.github.io/cpp-clang-travis-cmake-gtest-coveralls"/>
+  <link rel="shortcut icon" href="/assets/images/favicon.png" type="image/png"/>
+  <link rel="stylesheet" href="//brick.a.ssl.fastly.net/Linux+Libertine:400,400i,700,700i/Open+Sans:400,400i,700,700i">
+  <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+
+  <link rel="stylesheet" type="text/css" media="screen" href="/css/main.css" />
+  <link rel="stylesheet" type="text/css" media="print" href="/css/print.css" />
+
+  <link rel="apple-touch-icon" sizes="57x57" href="/assets/favicon/apple-touch-icon-57x57.png">
+  <link rel="apple-touch-icon" sizes="60x60" href="/assets/favicon/apple-touch-icon-60x60.png">
+  <link rel="apple-touch-icon" sizes="72x72" href="/assets/favicon/apple-touch-icon-72x72.png">
+  <link rel="apple-touch-icon" sizes="76x76" href="/assets/favicon/apple-touch-icon-76x76.png">
+  <link rel="apple-touch-icon" sizes="114x114" href="/assets/favicon/apple-touch-icon-114x114.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="/assets/favicon/apple-touch-icon-120x120.png">
+  <link rel="apple-touch-icon" sizes="144x144" href="/assets/favicon/apple-touch-icon-144x144.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/assets/favicon/apple-touch-icon-152x152.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-touch-icon-180x180.png">
+  <link rel="icon" type="image/png" href="/assets/favicon/favicon-32x32.png" sizes="32x32">
+  <link rel="icon" type="image/png" href="/assets/favicon/favicon-194x194.png" sizes="194x194">
+  <link rel="icon" type="image/png" href="/assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/png" href="/assets/favicon/android-chrome-192x192.png" sizes="192x192">
+  <link rel="icon" type="image/png" href="/assets/favicon/favicon-16x16.png" sizes="16x16">
+  <link rel="manifest" href="/assets/favicon/manifest.json">
+  <link rel="mask-icon" href="/assets/favicon/safari-pinned-tab.svg" color="#5bbad5">
+  <meta name="msapplication-TileColor" content="#00aba9">
+  <meta name="msapplication-TileImage" content="/mstile-144x144.png">
+  <meta name="theme-color" content="#ffffff"> 
+  
+</head>
+
+  <body itemscope itemtype="http://schema.org/Article">
+    <!-- header start -->
+
+<a href="http://david-grs.github.io" class="logo-readium"><span class="logo" style="background-image: url()"></span></a>
+
+<!-- header end -->
+
+    <main class="content" role="main">
+      <article class="post">
+        
+        <div class="noarticleimage">
+          <div class="post-meta">
+            <h1 class="post-title">Clang, Travis, CMake, GTest & Coveralls</h1>
+            <div class="cf post-meta-text">
+              <div class="author-image" style="background-image: url(/assets/images/author.jpg)">Blog Logo</div>
+              <h4 class="author-name" itemprop="author" itemscope itemtype="http://schema.org/Person">David Gross</h4>
+              on
+              <time datetime="2017-09-10T14:52:00+02:00">10 Sep 2017</time>
+              <!-- , tagged on <span class="post-tag-">, <a href="/tag/"></a></span> -->
+            </div>
+          </div>
+        </div>
+        <br>
+        <br>
+        <br>
+        
+        <section class="post-content">
+          <div class="post-reading">
+            <span class="post-reading-time"></span> read
+          </div>
+          <a name="topofpage"></a>
+          <p>This week, Jason Turner presented <a href="https://www.youtube.com/watch?v=3ulKzD2cmSw">an intro to Travis CI</a>. I never used Travis CI but wanted to try for a while, so I
+gave it a shot. Here is a short summary of this adventure...</p>
+
+<p>To start, simply sign in with your GitHub account on <a href="https://travis-ci.org/">Travis CI</a>, this will import all your repositories. From there, just enable one of them 
+and add the following <em>.travis.yml</em> to your repo:</p>
+<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">dist</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">trusty</span>
+<span class="l-Scalar-Plain">sudo</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">false</span>
+<span class="l-Scalar-Plain">language</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">cpp</span>
+
+<span class="l-Scalar-Plain">script</span><span class="p-Indicator">:</span>
+  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">cmake .</span>
+  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">cmake --build .</span>
+</code></pre></div>
+<p>On <em>git push</em>, it will automatically trigger your first Travis build. A few things though:</p>
+
+<ol>
+<li>The default GCC version is quite old &mdash; 4.8, no C++14 support</li>
+<li>Google Test won&#39;t work out of the box</li>
+<li>This doesn&#39;t include coverage report</li>
+</ol>
+
+<h2>GCC 6 &amp; CLang 5</h2>
+
+<p>Switching to GCC 5 is quite simple &mdash; Jason explains in his video how to change the <em>.travis.yml</em>. The one for GCC 6 is almost identical:</p>
+<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">dist</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">trusty</span>
+<span class="l-Scalar-Plain">sudo</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">false</span>
+<span class="l-Scalar-Plain">language</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">cpp</span>
+
+<span class="l-Scalar-Plain">addons</span><span class="p-Indicator">:</span>
+  <span class="l-Scalar-Plain">apt</span><span class="p-Indicator">:</span>
+    <span class="l-Scalar-Plain">sources</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">ubuntu-toolchain-r-test</span>
+    <span class="l-Scalar-Plain">packages</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">g++-6</span> 
+
+<span class="l-Scalar-Plain">script</span><span class="p-Indicator">:</span>
+  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">CXX=/usr/bin/g++-6 CC=/usr/bin/gcc-6 cmake .</span>
+  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">cmake --build .</span> 
+</code></pre></div>
+<p>Here, we are using the <em>apt</em> addon to install the <em>g++-6</em> package. You can add any packages or libraries from which your project depends. Alternatively, 
+you can also use the last <em>clang</em> release to build your project:</p>
+<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">dist</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">trusty</span>
+<span class="l-Scalar-Plain">sudo</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">false</span>
+<span class="l-Scalar-Plain">language</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">cpp</span>
+
+<span class="l-Scalar-Plain">addons</span><span class="p-Indicator">:</span>
+  <span class="l-Scalar-Plain">apt</span><span class="p-Indicator">:</span>
+    <span class="l-Scalar-Plain">sources</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">llvm-toolchain-trusty-5.0</span>
+    <span class="l-Scalar-Plain">packages</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">clang-5.0</span>
+
+<span class="l-Scalar-Plain">script</span><span class="p-Indicator">:</span>
+  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">CXX=/usr/bin/clang++-5.0 CC=/usr/bin/clang-5.0 cmake .</span>
+  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">cmake --build .</span> 
+</code></pre></div>
+<p><br /></p>
+
+<h2>Google Test</h2>
+
+<p>GTest is not handled by default &mdash; and we cannot blame Travis for that, but more Ubuntu that decided to stop distributing the library package. This means that your
+CMake <em>FindPackage</em> will fail:</p>
+<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">CMake Error at /usr/share/cmake-3.2/Modules/FindPackageHandleStandardArgs.cmake:138 (message)</span><span class="p-Indicator">:</span>
+  <span class="l-Scalar-Plain">Could NOT find GTest (missing</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">GTEST_LIBRARY GTEST_MAIN_LIBRARY)</span>
+<span class="l-Scalar-Plain">Call Stack (most recent call first)</span><span class="p-Indicator">:</span>
+  <span class="l-Scalar-Plain">/usr/share/cmake-3.2/Modules/FindPackageHandleStandardArgs.cmake:374 (_FPHSA_FAILURE_MESSAGE)</span>
+  <span class="l-Scalar-Plain">/usr/share/cmake-3.2/Modules/FindGTest.cmake:204 (FIND_PACKAGE_HANDLE_STANDARD_ARGS)</span>
+
+  <span class="l-Scalar-Plain">CMakeLists.txt:21 (find_package)</span>
+<span class="l-Scalar-Plain">-- Configuring incomplete, errors occurred!</span>
+</code></pre></div>
+<p>I looked around and found that people solves this in various ways:</p>
+
+<ol>
+<li>With a pre-build bash script that installs the <em>libgtest-dev</em> package, build it and copy the libraries &mdash; this is quite hacky and fragile as it depends on the various system paths and library names.</li>
+<li>With the GTest source in the repo &mdash; importing the whole source tree isn&#39;t necessary</li>
+<li>By adding GTest as a submodule &mdash; this is the way to go</li>
+</ol>
+
+<p>Add Google Test as a submodule: 
+<code>git submodule add git@github.com:google/googletest.git gtest</code></p>
+
+<p>Then, create a <em>gtest.cmake</em> file with this content:</p>
+<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">set(GOOGLETEST_ROOT gtest/googletest CACHE STRING &quot;Google Test source root&quot;)</span>
+
+<span class="l-Scalar-Plain">include_directories(SYSTEM</span>
+    <span class="l-Scalar-Plain">${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}</span>
+    <span class="l-Scalar-Plain">${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/include</span>
+    <span class="l-Scalar-Plain">)</span>
+
+<span class="l-Scalar-Plain">set(GOOGLETEST_SOURCES</span>
+    <span class="l-Scalar-Plain">${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/src/gtest-all.cc</span>
+    <span class="l-Scalar-Plain">${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/src/gtest_main.cc</span>
+    <span class="l-Scalar-Plain">)</span>
+
+<span class="l-Scalar-Plain">foreach(_source ${GOOGLETEST_SOURCES})</span>
+    <span class="l-Scalar-Plain">set_source_files_properties(${_source} PROPERTIES GENERATED 1)</span>
+<span class="l-Scalar-Plain">endforeach()</span>
+
+<span class="l-Scalar-Plain">add_library(gtest ${GOOGLETEST_SOURCES})</span>
+</code></pre></div>
+<p>Note the <em>SYSTEM</em> keyword in <em>include_directories</em>. Without it, you will get spammed on every build by all the warnings from GTest, especially if you build with <em>-Wall -Wextra etc</em>. </p>
+
+<p>Last step, include it in your main CMakeLists.txt and link to <em>gtest</em>:</p>
+<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">cmake_minimum_required(VERSION ...)</span>
+
+<span class="l-Scalar-Plain">project(...)</span>
+<span class="l-Scalar-Plain">include(gtest.cmake)</span>
+<span class="nn">...</span>
+<span class="l-Scalar-Plain">target_link_libraries(tests gtest pthread)</span>
+</code></pre></div>
+<h2>Coveralls</h2>
+
+<p>As you did for Travis CI, you need to sign in with your GitHub account on <a href="http://coveralls.io/">Coveralls</a> and enable your project. </p>
+
+<p>Now, edit your <em>.travis.yml</em> to install and run <em>cpp-coveralls</em> &mdash; after the unit tests passed:</p>
+<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">dist</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">trusty</span>
+<span class="l-Scalar-Plain">sudo</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">false</span>
+<span class="l-Scalar-Plain">language</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">cpp</span>
+
+<span class="l-Scalar-Plain">addons</span><span class="p-Indicator">:</span>
+  <span class="l-Scalar-Plain">apt</span><span class="p-Indicator">:</span>
+    <span class="l-Scalar-Plain">sources</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">ubuntu-toolchain-r-test</span>
+    <span class="l-Scalar-Plain">packages</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">g++-6</span>
+
+<span class="l-Scalar-Plain">before_install</span><span class="p-Indicator">:</span>
+  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">pip install --user cpp-coveralls</span>
+
+<span class="l-Scalar-Plain">script</span><span class="p-Indicator">:</span>
+  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">CXX=/usr/bin/g++-6 CC=/usr/bin/gcc-6 cmake -DCOVERAGE=1 .</span>
+  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">cmake --build .</span> 
+  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">./tests</span>
+
+<span class="l-Scalar-Plain">after_success</span><span class="p-Indicator">:</span>
+  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">coveralls --root . -E &quot;.*gtest.*&quot; -E &quot;.*CMakeFiles.*&quot;</span> 
+</code></pre></div>
+<p>A few things to note here:
+  * We excluded Google Test from the coverage with <em>-E &quot;.*gtest.*&quot;</em>
+  * <em>-DCOVERAGE=1</em> is passed to CMake &mdash; locally, you might not want to enable coverage all the time
+  * Don&#39;t forget to run your tests!</p>
+
+<p>Now we need to enable the <em>gcda</em> files generation &mdash; needed by <em>lcov</em> &mdash; in our toolchain. This is done by adding
+the <em>--coverage</em> flag to both compiler and linker:</p>
+<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">SET(COVERAGE OFF CACHE BOOL &quot;Coverage&quot;)</span>
+<span class="nn">...</span>
+<span class="l-Scalar-Plain">if (COVERAGE)</span>
+    <span class="l-Scalar-Plain">target_compile_options(tests PRIVATE --coverage)</span>
+    <span class="l-Scalar-Plain">target_link_libraries(tests PRIVATE --coverage)</span>
+<span class="l-Scalar-Plain">endif()</span>
+</code></pre></div>
+        </section>
+        <footer class="post-footer">
+          <section class="share">
+            
+              
+            
+          </section>
+        </footer>
+        <div class="bottom-teaser cf">
+          <div class="isLeft">
+            <h5 class="index-headline featured"><span>Written by</span></h5>
+            <section class="author">
+              <div class="author-image" style="background-image: url(/assets/images/author.jpg)">Blog Logo</div>
+              <h4>David Gross</h4>
+              <p class="bio"></p>
+              <hr>
+              <p class="published">Published <time datetime="2017-09-10 14:52">10 Sep 2017</time></p>
+            </section>
+          </div>
+          
+          <div class="isRight">
+            <h5 class="index-headline featured"><span>Supported by</span></h5>
+            <footer class="site-footer">
+              <section class="poweredby">Proudly published with <a href="http://jekyllrb.com"> Jekyll</a></section>
+              <a class="subscribe" href="/feed.xml"> <span class="tooltip"> <i class="fa fa-rss"></i> You should subscribe to my feed.</span></a>
+              <div class="inner">
+                <section class="copyright">All content copyright <a href="/">David Gross</a> &copy; 2017<br>All rights reserved.</section>
+              </div>
+            </footer>
+          </div>
+        </div>
+        
+        <div id="disqus_thread"></div>
+        <script type="text/javascript">
+            /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+            var disqus_shortname = 'david-grs'; // required: replace example with your forum shortname
+
+            /* * * DON'T EDIT BELOW THIS LINE * * */
+            (function() {
+                var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+                dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+                (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+            })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+        
+      </article>
+    </main>
+    <div class="bottom-closer">
+      <div class="background-closer-image"  style="background-image: url(/assets/images/cover.jpg)">
+        Image
+      </div>
+      <div class="inner">
+        <h1 class="blog-title">Thoughts from a Wall Street developer</h1>
+        <h2 class="blog-description">A blog about C++, with an emphasis on low-latency, performance measurements and system programming.
+</h2>
+        <a href="/" class="btn">Back to Overview</a>
+      </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+<script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+<script type="text/javascript" src="/assets/js/index.js"></script>
+<script type="text/javascript" src="/assets/js/readingTime.min.js"></script>
+<script>
+(function ($) {
+  "use strict";
+  $(document).ready(function(){
+
+    var $window = $(window),
+    $image = $('.post-image-image, .teaserimage-image');
+    
+      $window.on('scroll', function() {
+        var top = $window.scrollTop();
+
+        if (top < 0 || top > 1500) { return; }
+        $image
+          .css('transform', 'translate3d(0px, '+top/3+'px, 0px)')
+          .css('opacity', 1-Math.max(top/700, 0));
+      });
+      $window.trigger('scroll');
+
+      var height = $('.article-image').height();
+      $('.post-content').css('padding-top', height + 'px');
+
+      $('a[href*=#]:not([href=#])').click(function() {
+        if (location.pathname.replace(/^\//,'') == this.pathname.replace(/^\//,'')
+         && location.hostname == this.hostname) {
+          var target = $(this.hash);
+          target = target.length ? target : $('[name=' + this.hash.slice(1) +']');
+          if (target.length) {
+            $('html,body').animate({ scrollTop: target.offset().top }, 500);
+            return false;
+          }
+        }
+      });
+
+  });
+}(jQuery));
+</script>
+
+
+    <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-75603420-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+
+
+  </body>
+</html>
