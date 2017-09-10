@@ -8,7 +8,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
   <title>Clang, Travis, CMake, GTest & Coveralls</title>
-  <meta name="description" content="This week, Jason Turner presented an intro to Travis CI. I never used Travis CI but wanted to try for a while, so Igave it a shot. Here is a short summary of this adventure…" />
+  <meta name="description" content="This week, Jason Turner presented an intro to Travis CI. I’ve never used it but have wanted to try for a while, so Igave it a shot. Here is a short summary of this adventure…" />
 
   <meta name="HandheldFriendly" content="True" />
   <meta name="MobileOptimized" content="320" />
@@ -19,7 +19,7 @@
   <meta property="og:site_name" content="Thoughts from a Wall Street developer" />
   <meta property="og:title" content="Clang, Travis, CMake, GTest & Coveralls"/>
   
-  <meta property="og:description" content="This week, Jason Turner presented an intro to Travis CI. I never used Travis CI but wanted to try for a while, so Igave it a shot. Here is a short summary of this adventure…" />
+  <meta property="og:description" content="This week, Jason Turner presented an intro to Travis CI. I’ve never used it but have wanted to try for a while, so Igave it a shot. Here is a short summary of this adventure…" />
   
   <meta property="og:image" content="http://david-grs.github.io" />
   <meta property="og:url" content="http://david-grs.github.io/cpp-clang-travis-cmake-gtest-coveralls" >
@@ -87,7 +87,7 @@
             <span class="post-reading-time"></span> read
           </div>
           <a name="topofpage"></a>
-          <p>This week, Jason Turner presented <a href="https://www.youtube.com/watch?v=3ulKzD2cmSw">an intro to Travis CI</a>. I never used Travis CI but wanted to try for a while, so I
+          <p>This week, Jason Turner presented <a href="https://www.youtube.com/watch?v=3ulKzD2cmSw">an intro to Travis CI</a>. I’ve never used it but have wanted to try for a while, so I
 gave it a shot. Here is a short summary of this adventure…</p>
 
 <p>To start, simply sign in with your GitHub account on <a href="https://travis-ci.org/">Travis CI</a>, this will import all your repositories. From there, just enable one of them 
@@ -106,7 +106,7 @@ and add the following <em>.travis.yml</em> to your repo:</p>
 <ol>
   <li>The default GCC version is quite old — 4.8, no C++14 support</li>
   <li>Google Test won’t work out of the box</li>
-  <li>This doesn’t include coverage report</li>
+  <li>This doesn’t include the coverage report</li>
 </ol>
 
 <h2 id="gcc-6--clang-5">GCC 6 &amp; CLang 5</h2>
@@ -127,7 +127,7 @@ and add the following <em>.travis.yml</em> to your repo:</p>
   <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">CXX=/usr/bin/g++-6 CC=/usr/bin/gcc-6 cmake .</span>
   <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">cmake --build .</span></code></pre></div>
 
-<p>Here, we are using the <em>apt</em> addon to install the <em>g++-6</em> package. You can add any packages or libraries from which your project depends. Alternatively, 
+<p>Here, we are using the <em>apt</em> add-on to install the <em>g++-6</em> package. You can add any packages or libraries on which your project depends. Alternatively, 
 you can also use the last <em>clang</em> release to build your project:</p>
 
 <div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">dist</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">trusty</span>
@@ -160,18 +160,18 @@ CMake <em>FindPackage</em> will fail:</p>
   <span class="l-Scalar-Plain">CMakeLists.txt:21 (find_package)</span>
 <span class="l-Scalar-Plain">-- Configuring incomplete, errors occurred!</span></code></pre></div>
 
-<p>I looked around and found that people solves this in various ways:</p>
+<p>I looked around and found that people solve this in various ways:</p>
 
 <ol>
-  <li>With a pre-build bash script that installs the <em>libgtest-dev</em> package, build it and copy the libraries — this is quite hacky and fragile as it depends on the various system paths and library names.</li>
+  <li>With a pre-build bash script that installs the <em>libgtest-dev</em> package, builds it and copies the libraries — this is quite hacky and fragile as it depends on the various system paths and library names.</li>
   <li>With the GTest source in the repo — importing the whole source tree isn’t necessary</li>
   <li>By adding GTest as a submodule — this is the way to go</li>
 </ol>
 
-<p>Add Google Test as a submodule: 
+<p>Add GTest as a submodule: 
 <code>git submodule add git@github.com:google/googletest.git gtest</code></p>
 
-<p>Then, create a <em>gtest.cmake</em> file with this content:</p>
+<p>Then create a <em>gtest.cmake</em> file with this content:</p>
 
 <div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">set(GOOGLETEST_ROOT gtest/googletest CACHE STRING &quot;Google Test source root&quot;)</span>
 
@@ -205,7 +205,7 @@ CMake <em>FindPackage</em> will fail:</p>
 <h2 id="coveralls">Coveralls</h2>
 <p>As you did for Travis CI, you need to sign in with your GitHub account on <a href="http://coveralls.io/">Coveralls</a> and enable your project. </p>
 
-<p>Now, edit your <em>.travis.yml</em> to install and run <em>cpp-coveralls</em> — after the unit tests passed:</p>
+<p>Now edit your <em>.travis.yml</em> to install and run <em>cpp-coveralls</em>:</p>
 
 <div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">dist</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">trusty</span>
 <span class="l-Scalar-Plain">sudo</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">false</span>
@@ -229,12 +229,16 @@ CMake <em>FindPackage</em> will fail:</p>
 <span class="l-Scalar-Plain">after_success</span><span class="p-Indicator">:</span>
   <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">coveralls --root . -E &quot;.*gtest.*&quot; -E &quot;.*CMakeFiles.*&quot;</span></code></pre></div>
 
-<p>A few things to note here:
-  * We excluded Google Test from the coverage with <em>-E “.*gtest.*”</em>
-  * <em>-DCOVERAGE=1</em> is passed to CMake — locally, you might not want to enable coverage all the time
-  * Don’t forget to run your tests!</p>
+<p><br />
+A few things to note here:</p>
 
-<p>Now we need to enable the <em>gcda</em> files generation — needed by <em>lcov</em> — in our toolchain. This is done by adding
+<ol>
+  <li>We excluded Google Test from the coverage with <em>-E “.*gtest.*”</em></li>
+  <li><em>-DCOVERAGE=1</em> is passed to CMake — locally, you might not want to enable coverage </li>
+  <li>Don’t forget to run your unit tests if you want them in the coverage report</li>
+</ol>
+
+<p>Finally, we need to enable the <em>gcda</em> files generation — needed by <em>lcov</em> — in our toolchain. This is done by adding
 the <em>–coverage</em> flag to both compiler and linker:</p>
 
 <div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">SET(COVERAGE OFF CACHE BOOL &quot;Coverage&quot;)</span>
