@@ -6,9 +6,228 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Wed, 28 Dec 2016 22:34:37 +0100</pubDate>
-    <lastBuildDate>Wed, 28 Dec 2016 22:34:37 +0100</lastBuildDate>
+    <pubDate>Thu, 14 Sep 2017 23:50:50 +0200</pubDate>
+    <lastBuildDate>Thu, 14 Sep 2017 23:50:50 +0200</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
+    
+      <item>
+        <title>C++ CI: Travis, CMake, GTest, Coveralls &amp; Appveyor</title>
+        <description>&lt;p&gt;Last week, Jason Turner presented &lt;a href=&quot;https://www.youtube.com/watch?v=3ulKzD2cmSw&quot;&gt;an intro to Travis CI&lt;/a&gt;. I’ve never used it but have wanted to try for a while, so I
+gave it a shot. Here is a short summary of this small adventure…&lt;/p&gt;
+
+&lt;p&gt;First of all, what are these tools we are talking about?&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Travis CI: a build farm for GNU/Linux and Mac OS X that also runs your unit tests&lt;/li&gt;
+  &lt;li&gt;Coveralls: it works on the top of Travis CI, by generating coverage report (&lt;em&gt;lcov&lt;/em&gt; on Linux)&lt;/li&gt;
+  &lt;li&gt;Appveyor: like Travis CI, but for Windows&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;blockquote&gt;
+  &lt;h1 id=&quot;tldr&quot;&gt;TL;DR&lt;/h1&gt;
+  &lt;p&gt;You can checkout all the configuration files on &lt;a href=&quot;https://github.com/david-grs/clang_travis_cmake_gtest_coveralls_example&quot;&gt;this github demo project&lt;/a&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;To start, simply sign in with your GitHub account on &lt;a href=&quot;https://travis-ci.org/&quot;&gt;Travis CI&lt;/a&gt;, this will import all your repositories. From there, just enable one of them 
+and add the following &lt;em&gt;.travis.yml&lt;/em&gt; to your repo:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;l-Scalar-Plain&quot;&gt;dist&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;trusty&lt;/span&gt;
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;sudo&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;false&lt;/span&gt;
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;language&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cpp&lt;/span&gt;
+  
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;script&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cmake .&lt;/span&gt;
+  &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cmake --build .&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;On &lt;em&gt;git push&lt;/em&gt;, it will automatically trigger your first Travis build. &lt;/p&gt;
+
+&lt;h2 id=&quot;gcc-6--clang-5&quot;&gt;GCC 6 &amp;amp; Clang 5&lt;/h2&gt;
+&lt;p&gt;By default, Travis CI is using a quite old version of GCC — 4.8, so no C++14 support. Switching to GCC 5 is quite simple and Jason explains in his video how to change the &lt;em&gt;.travis.yml&lt;/em&gt;. The one for GCC 6 is almost identical:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;l-Scalar-Plain&quot;&gt;dist&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;trusty&lt;/span&gt;
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;sudo&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;false&lt;/span&gt;
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;language&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cpp&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;addons&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;l-Scalar-Plain&quot;&gt;apt&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;sources&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;ubuntu-toolchain-r-test&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;packages&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;g++-6&lt;/span&gt; 
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;script&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;CXX=/usr/bin/g++-6 CC=/usr/bin/gcc-6 cmake .&lt;/span&gt;
+  &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cmake --build .&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Here, we are using the &lt;em&gt;apt&lt;/em&gt; add-on to install the &lt;em&gt;g++-6&lt;/em&gt; package. You can add any packages or libraries on which your project depends. Alternatively, 
+you can also use the last &lt;em&gt;clang&lt;/em&gt; release to build your project:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;l-Scalar-Plain&quot;&gt;dist&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;trusty&lt;/span&gt;
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;sudo&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;false&lt;/span&gt;
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;language&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cpp&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;addons&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;l-Scalar-Plain&quot;&gt;apt&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;sources&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;llvm-toolchain-trusty-5.0&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;packages&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;clang-5.0&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;script&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;CXX=/usr/bin/clang++-5.0 CC=/usr/bin/clang-5.0 cmake .&lt;/span&gt;
+  &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cmake --build .&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;google-test&quot;&gt;Google Test&lt;/h2&gt;
+&lt;p&gt;GTest is not handled by default — and we cannot blame Travis for that, but more Ubuntu that decided to stop distributing the library package. This means
+that your CMake &lt;em&gt;FindPackage&lt;/em&gt; will fail:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;l-Scalar-Plain&quot;&gt;CMake Error at /usr/share/cmake-3.2/Modules/FindPackageHandleStandardArgs.cmake:138 (message)&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;l-Scalar-Plain&quot;&gt;Could NOT find GTest (missing&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;GTEST_LIBRARY GTEST_MAIN_LIBRARY)&lt;/span&gt;
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;Call Stack (most recent call first)&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;l-Scalar-Plain&quot;&gt;/usr/share/cmake-3.2/Modules/FindPackageHandleStandardArgs.cmake:374 (_FPHSA_FAILURE_MESSAGE)&lt;/span&gt;
+  &lt;span class=&quot;l-Scalar-Plain&quot;&gt;/usr/share/cmake-3.2/Modules/FindGTest.cmake:204 (FIND_PACKAGE_HANDLE_STANDARD_ARGS)&lt;/span&gt;
+
+  &lt;span class=&quot;l-Scalar-Plain&quot;&gt;CMakeLists.txt:21 (find_package)&lt;/span&gt;
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;-- Configuring incomplete, errors occurred!&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;I looked around and found that people solve this in various ways:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;With a pre-build bash script that installs the &lt;em&gt;libgtest-dev&lt;/em&gt; package, builds it and copies the libraries — this is quite hacky and fragile as it depends on the various system paths and library names.&lt;/li&gt;
+  &lt;li&gt;With the GTest source in the repo — importing the whole source tree isn’t necessary&lt;/li&gt;
+  &lt;li&gt;By adding GTest as a submodule — this is the way to go&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Add GTest as a submodule: 
+&lt;code&gt;git submodule add git@github.com:google/googletest.git gtest&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;Then create a &lt;em&gt;gtest.cmake&lt;/em&gt; file with this content:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;l-Scalar-Plain&quot;&gt;set(GOOGLETEST_ROOT gtest/googletest CACHE STRING &amp;quot;Google Test source root&amp;quot;)&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;include_directories(SYSTEM&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/include&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;set(GOOGLETEST_SOURCES&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/src/gtest-all.cc&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/src/gtest_main.cc&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;foreach(_source ${GOOGLETEST_SOURCES})&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;set_source_files_properties(${_source} PROPERTIES GENERATED 1)&lt;/span&gt;
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;endforeach()&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;add_library(gtest ${GOOGLETEST_SOURCES})&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Note the &lt;em&gt;SYSTEM&lt;/em&gt; keyword in &lt;em&gt;include_directories&lt;/em&gt;. Without it, you will get spammed on every build by all the warnings from GTest, especially if you build with &lt;em&gt;-Wall -Wextra etc&lt;/em&gt;. &lt;/p&gt;
+
+&lt;p&gt;Last step, include it in your main CMakeLists.txt and link to &lt;em&gt;gtest&lt;/em&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;l-Scalar-Plain&quot;&gt;cmake_minimum_required(VERSION ...)&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;project(...)&lt;/span&gt;
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;include(gtest.cmake)&lt;/span&gt;
+&lt;span class=&quot;nn&quot;&gt;...&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# GTest needs threading support&lt;/span&gt;
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;find_package (Threads)&lt;/span&gt;
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;target_link_libraries(... gtest ${CMAKE_THREAD_LIBS_INIT})&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;coveralls&quot;&gt;Coveralls&lt;/h2&gt;
+&lt;p&gt;As you did for Travis CI, you need to sign in with your GitHub account on &lt;a href=&quot;http://coveralls.io/&quot;&gt;Coveralls&lt;/a&gt; and enable your project. &lt;/p&gt;
+
+&lt;p&gt;Now edit your &lt;em&gt;.travis.yml&lt;/em&gt; to install and run &lt;em&gt;cpp-coveralls&lt;/em&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;l-Scalar-Plain&quot;&gt;dist&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;trusty&lt;/span&gt;
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;sudo&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;false&lt;/span&gt;
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;language&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cpp&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;addons&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;l-Scalar-Plain&quot;&gt;apt&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;sources&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;ubuntu-toolchain-r-test&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;packages&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;g++-6&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;before_install&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;pip install --user cpp-coveralls&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;script&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;CXX=/usr/bin/g++-6 CC=/usr/bin/gcc-6 cmake -DCOVERAGE=1 .&lt;/span&gt;
+  &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cmake --build .&lt;/span&gt; 
+  &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;./tests&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;after_success&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;coveralls --root . -E &amp;quot;.*gtest.*&amp;quot; -E &amp;quot;.*CMakeFiles.*&amp;quot;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;
+A few things to note here:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;We excluded Google Test from the coverage with &lt;em&gt;-E “.*gtest.*”&lt;/em&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;em&gt;-DCOVERAGE=1&lt;/em&gt; is passed to CMake — locally, you might not want to enable coverage &lt;/li&gt;
+  &lt;li&gt;Don’t forget to run your unit tests if you want them in the coverage report&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Finally, we need to enable the &lt;em&gt;gcda&lt;/em&gt; files generation — needed by &lt;em&gt;lcov&lt;/em&gt; — in our toolchain. This is done by adding
+the &lt;em&gt;–coverage&lt;/em&gt; flag to both compiler and linker:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;l-Scalar-Plain&quot;&gt;SET(COVERAGE OFF CACHE BOOL &amp;quot;Coverage&amp;quot;)&lt;/span&gt;
+&lt;span class=&quot;nn&quot;&gt;...&lt;/span&gt;
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;if (COVERAGE)&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;target_compile_options(tests PRIVATE --coverage)&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;target_link_libraries(tests PRIVATE --coverage)&lt;/span&gt;
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;endif()&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;appveyor&quot;&gt;Appveyor&lt;/h2&gt;
+&lt;p&gt;As a Linux user, Appveyor was a bit tricky as I couldn’t build locally. Be sure to remember:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Appveyor will NOT clone your project with &lt;em&gt;git clone –recursive&lt;/em&gt;, so you need to run manually &lt;em&gt;git submodule update –init –recursive&lt;/em&gt; after the checkout&lt;/li&gt;
+  &lt;li&gt;It is not possible to build directly with CMake — Appveyor expects a sln file, you can generate it via CMake, e.g. &lt;em&gt;cmake -G “Visual Studio 15 2017 Win64”&lt;/em&gt;&lt;/li&gt;
+  &lt;li&gt;The last 1.8.0 release of GTest does not build with Visual Studio 2017 — you need to add the definition &lt;em&gt;GTEST_HAS_TR1_TUPLE=0&lt;/em&gt; to tell GTest not using ::tr1 stuff&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Here is my &lt;em&gt;appveyor.yml&lt;/em&gt; file:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;l-Scalar-Plain&quot;&gt;version&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;#39;1.0.{build}&amp;#39;&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;image&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;Visual Studio 2017&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;platform&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;x64&lt;/span&gt;
+ 
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;configuration&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;Release&lt;/span&gt;
+  &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;Debug&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;install&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;git submodule update --init --recursive&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;before_build&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cmake -G &amp;quot;Visual Studio 15 2017 Win64&amp;quot; .&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;build&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;l-Scalar-Plain&quot;&gt;project&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;$(APPVEYOR_BUILD_FOLDER)\$(APPVEYOR_PROJECT_NAME).sln&lt;/span&gt;
+
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;test_script&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;#39;%APPVEYOR_BUILD_FOLDER%\%CONFIGURATION%\tests.exe&amp;#39;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+</description>
+        <pubDate>Thu, 14 Sep 2017 21:57:00 +0200</pubDate>
+        <link>http://david-grs.github.io/cpp-clang-travis-cmake-gtest-coveralls-appveyor</link>
+        <guid isPermaLink="true">http://david-grs.github.io/cpp-clang-travis-cmake-gtest-coveralls-appveyor</guid>
+        
+        
+      </item>
     
       <item>
         <title>Heap fragmentation or how my micro-benchmark went wrong</title>
