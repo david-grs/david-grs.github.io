@@ -15,7 +15,7 @@ First of all, what are these tools we are talking about?
   * Appveyor: like Travis CI, but for Windows
 
 > #TL;DR
-> You can checkout all the configuration files on [this github demo project](https://github.com/david-grs/clang-travis-cmake-gtest-coverage-example)
+> You can checkout all the configuration files on [this github demo project](https://github.com/david-grs/clang_travis_cmake_gtest_coveralls_example)
 
 To start, simply sign in with your GitHub account on [Travis CI](https://travis-ci.org/), this will import all your repositories. From there, just enable one of them 
 and add the following *.travis.yml* to your repo:
