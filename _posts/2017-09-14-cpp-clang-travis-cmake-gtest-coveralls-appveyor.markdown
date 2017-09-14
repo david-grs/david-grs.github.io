@@ -1,12 +1,21 @@
 ---
 layout: post
-title:  "Clang, Travis, CMake, GTest & Coveralls"
+title:  "C++ CI: Travis, CMake, GTest, Coveralls & Appveyor"
 author: David Gross
-date:   2017-09-10 14:52
+date:   2017-09-14 21:57
 ---
 
-This week, Jason Turner presented [an intro to Travis CI](https://www.youtube.com/watch?v=3ulKzD2cmSw). I've never used it but have wanted to try for a while, so I
-gave it a shot. Here is a short summary of this adventure...
+Last week, Jason Turner presented [an intro to Travis CI](https://www.youtube.com/watch?v=3ulKzD2cmSw). I've never used it but have wanted to try for a while, so I
+gave it a shot. Here is a short summary of this small adventure...
+
+First of all, what are these tools we are talking about?
+
+  * Travis CI: a build farm for GNU/Linux and Mac OS X that also runs your unit tests
+  * Coveralls: it works on the top of Travis CI, by generating coverage report (*lcov* on Linux)
+  * Appveyor: like Travis CI, but for Windows
+
+> #TL;DR
+> You can checkout all the configuration files on [this github demo project](https://github.com/david-grs/clang-travis-cmake-gtest-coverage-example)
 
 To start, simply sign in with your GitHub account on [Travis CI](https://travis-ci.org/), this will import all your repositories. From there, just enable one of them 
 and add the following *.travis.yml* to your repo:
@@ -21,17 +30,13 @@ script:
   - cmake --build .
 {% endhighlight  %}
 
-On *git push*, it will automatically trigger your first Travis build. A few things though:
-
-  1. The default GCC version is quite old &mdash; 4.8, no C++14 support
-  2. Google Test won't work out of the box
-  3. This doesn't include the coverage report
+On *git push*, it will automatically trigger your first Travis build. 
+  
 
 
-
-GCC 6 & CLang 5
+GCC 6 & Clang 5
 ---------------
-Switching to GCC 5 is quite simple &mdash; Jason explains in his video how to change the *.travis.yml*. The one for GCC 6 is almost identical:
+By default, Travis CI is using a quite old version of GCC &mdash; 4.8, so no C++14 support. Switching to GCC 5 is quite simple and Jason explains in his video how to change the *.travis.yml*. The one for GCC 6 is almost identical:
 
 {% highlight yaml %}
 dist: trusty
@@ -75,8 +80,8 @@ script:
 
 Google Test
 -----------
-GTest is not handled by default &mdash; and we cannot blame Travis for that, but more Ubuntu that decided to stop distributing the library package. This means that your
-CMake *FindPackage* will fail:
+GTest is not handled by default &mdash; and we cannot blame Travis for that, but more Ubuntu that decided to stop distributing the library package. This means
+that your CMake *FindPackage* will fail:
 
 {% highlight yaml %}
 CMake Error at /usr/share/cmake-3.2/Modules/FindPackageHandleStandardArgs.cmake:138 (message):
@@ -131,7 +136,10 @@ cmake_minimum_required(VERSION ...)
 project(...)
 include(gtest.cmake)
 ...
-target_link_libraries(tests gtest pthread)
+
+# GTest needs threading support
+find_package (Threads)
+target_link_libraries(... gtest ${CMAKE_THREAD_LIBS_INIT})
 {% endhighlight  %}
 <br />
 
@@ -184,5 +192,43 @@ if (COVERAGE)
     target_link_libraries(tests PRIVATE --coverage)
 endif()
 {% endhighlight  %}
+<br />
+
+
+Appveyor
+--------
+As a Linux user, Appveyor was a bit tricky as I couldn't build locally. Be sure to remember:
+ 
+  * Appveyor will NOT clone your project with *git clone --recursive*, so you need to run manually *git submodule update --init --recursive* after the checkout
+  * It is not possible to build directly with CMake &mdash; Appveyor expects a sln file, you can generate it via CMake, e.g. *cmake -G "Visual Studio 15 2017 Win64"*
+  * The last 1.8.0 release of GTest does not build with Visual Studio 2017 &mdash; you need to add the definition *GTEST_HAS_TR1_TUPLE=0* to tell GTest not using ::tr1 stuff
+
+Here is my *appveyor.yml* file:
+
+{% highlight yaml %}
+version: '1.0.{build}'
+
+image: Visual Studio 2017
+
+platform:
+  - x64
+ 
+configuration:
+  - Release
+  - Debug
+
+install:
+    - git submodule update --init --recursive
+
+before_build:
+    - cmake -G "Visual Studio 15 2017 Win64" .
+
+build:
+  project: $(APPVEYOR_BUILD_FOLDER)\$(APPVEYOR_PROJECT_NAME).sln
+
+test_script:
+  - '%APPVEYOR_BUILD_FOLDER%\%CONFIGURATION%\tests.exe'
+{% endhighlight %}
+
 
 
