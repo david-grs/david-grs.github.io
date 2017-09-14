@@ -7,8 +7,8 @@
   <!-- (1) force latest IE rendering engine: bit.ly/1c8EiC9 -->
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
-  <title>Clang, Travis, CMake, GTest & Coveralls</title>
-  <meta name="description" content="This week, Jason Turner presented an intro to Travis CI. I’ve never used it but have wanted to try for a while, so Igave it a shot. Here is a short summary of this adventure…" />
+  <title>C++ CI: Travis, CMake, GTest, Coveralls & Appveyor</title>
+  <meta name="description" content="Last week, Jason Turner presented an intro to Travis CI. I’ve never used it but have wanted to try for a while, so Igave it a shot. Here is a short summary of this small adventure…" />
 
   <meta name="HandheldFriendly" content="True" />
   <meta name="MobileOptimized" content="320" />
@@ -17,16 +17,16 @@
   
   
   <meta property="og:site_name" content="Thoughts from a Wall Street developer" />
-  <meta property="og:title" content="Clang, Travis, CMake, GTest & Coveralls"/>
+  <meta property="og:title" content="C++ CI: Travis, CMake, GTest, Coveralls & Appveyor"/>
   
-  <meta property="og:description" content="This week, Jason Turner presented an intro to Travis CI. I’ve never used it but have wanted to try for a while, so Igave it a shot. Here is a short summary of this adventure…" />
+  <meta property="og:description" content="Last week, Jason Turner presented an intro to Travis CI. I’ve never used it but have wanted to try for a while, so Igave it a shot. Here is a short summary of this small adventure…" />
   
   <meta property="og:image" content="http://david-grs.github.io" />
-  <meta property="og:url" content="http://david-grs.github.io/cpp-clang-travis-cmake-gtest-coveralls" >
+  <meta property="og:url" content="http://david-grs.github.io/cpp-clang-travis-cmake-gtest-coveralls-appveyor" >
   <meta property="og:type" content="blog" />
-  <meta property="article:published_time" content="2017-09-10T14:52:00+02:00">
+  <meta property="article:published_time" content="2017-09-14T21:57:00+02:00">
 
-  <link rel="canonical" href="http://david-grs.github.io/cpp-clang-travis-cmake-gtest-coveralls"/>
+  <link rel="canonical" href="http://david-grs.github.io/cpp-clang-travis-cmake-gtest-coveralls-appveyor"/>
   <link rel="shortcut icon" href="/assets/images/favicon.png" type="image/png"/>
   <link rel="stylesheet" href="//brick.a.ssl.fastly.net/Linux+Libertine:400,400i,700,700i/Open+Sans:400,400i,700,700i">
   <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
@@ -68,12 +68,12 @@
         
         <div class="noarticleimage">
           <div class="post-meta">
-            <h1 class="post-title">Clang, Travis, CMake, GTest & Coveralls</h1>
+            <h1 class="post-title">C++ CI: Travis, CMake, GTest, Coveralls & Appveyor</h1>
             <div class="cf post-meta-text">
               <div class="author-image" style="background-image: url(/assets/images/author.jpg)">Blog Logo</div>
               <h4 class="author-name" itemprop="author" itemscope itemtype="http://schema.org/Person">David Gross</h4>
               on
-              <time datetime="2017-09-10T14:52:00+02:00">10 Sep 2017</time>
+              <time datetime="2017-09-14T21:57:00+02:00">14 Sep 2017</time>
               <!-- , tagged on <span class="post-tag-">, <a href="/tag/"></a></span> -->
             </div>
           </div>
@@ -87,8 +87,21 @@
             <span class="post-reading-time"></span> read
           </div>
           <a name="topofpage"></a>
-          <p>This week, Jason Turner presented <a href="https://www.youtube.com/watch?v=3ulKzD2cmSw">an intro to Travis CI</a>. I’ve never used it but have wanted to try for a while, so I
-gave it a shot. Here is a short summary of this adventure…</p>
+          <p>Last week, Jason Turner presented <a href="https://www.youtube.com/watch?v=3ulKzD2cmSw">an intro to Travis CI</a>. I’ve never used it but have wanted to try for a while, so I
+gave it a shot. Here is a short summary of this small adventure…</p>
+
+<p>First of all, what are these tools we are talking about?</p>
+
+<ul>
+  <li>Travis CI: a build farm for GNU/Linux and Mac OS X that also runs your unit tests</li>
+  <li>Coveralls: it works on the top of Travis CI, by generating coverage report (<em>lcov</em> on Linux)</li>
+  <li>Appveyor: like Travis CI, but for Windows</li>
+</ul>
+
+<blockquote>
+  <h1 id="tldr">TL;DR</h1>
+  <p>You can checkout all the configuration files on <a href="https://github.com/david-grs/clang-travis-cmake-gtest-coverage-example">this github demo project</a></p>
+</blockquote>
 
 <p>To start, simply sign in with your GitHub account on <a href="https://travis-ci.org/">Travis CI</a>, this will import all your repositories. From there, just enable one of them 
 and add the following <em>.travis.yml</em> to your repo:</p>
@@ -101,16 +114,10 @@ and add the following <em>.travis.yml</em> to your repo:</p>
   <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">cmake .</span>
   <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">cmake --build .</span></code></pre></div>
 
-<p>On <em>git push</em>, it will automatically trigger your first Travis build. A few things though:</p>
+<p>On <em>git push</em>, it will automatically trigger your first Travis build. </p>
 
-<ol>
-  <li>The default GCC version is quite old — 4.8, no C++14 support</li>
-  <li>Google Test won’t work out of the box</li>
-  <li>This doesn’t include the coverage report</li>
-</ol>
-
-<h2 id="gcc-6--clang-5">GCC 6 &amp; CLang 5</h2>
-<p>Switching to GCC 5 is quite simple — Jason explains in his video how to change the <em>.travis.yml</em>. The one for GCC 6 is almost identical:</p>
+<h2 id="gcc-6--clang-5">GCC 6 &amp; Clang 5</h2>
+<p>By default, Travis CI is using a quite old version of GCC — 4.8, so no C++14 support. Switching to GCC 5 is quite simple and Jason explains in his video how to change the <em>.travis.yml</em>. The one for GCC 6 is almost identical:</p>
 
 <div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">dist</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">trusty</span>
 <span class="l-Scalar-Plain">sudo</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">false</span>
@@ -148,8 +155,8 @@ you can also use the last <em>clang</em> release to build your project:</p>
 <p><br /></p>
 
 <h2 id="google-test">Google Test</h2>
-<p>GTest is not handled by default — and we cannot blame Travis for that, but more Ubuntu that decided to stop distributing the library package. This means that your
-CMake <em>FindPackage</em> will fail:</p>
+<p>GTest is not handled by default — and we cannot blame Travis for that, but more Ubuntu that decided to stop distributing the library package. This means
+that your CMake <em>FindPackage</em> will fail:</p>
 
 <div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">CMake Error at /usr/share/cmake-3.2/Modules/FindPackageHandleStandardArgs.cmake:138 (message)</span><span class="p-Indicator">:</span>
   <span class="l-Scalar-Plain">Could NOT find GTest (missing</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">GTEST_LIBRARY GTEST_MAIN_LIBRARY)</span>
@@ -200,7 +207,12 @@ CMake <em>FindPackage</em> will fail:</p>
 <span class="l-Scalar-Plain">project(...)</span>
 <span class="l-Scalar-Plain">include(gtest.cmake)</span>
 <span class="nn">...</span>
-<span class="l-Scalar-Plain">target_link_libraries(tests gtest pthread)</span></code></pre></div>
+
+<span class="c1"># GTest needs threading support</span>
+<span class="l-Scalar-Plain">find_package (Threads)</span>
+<span class="l-Scalar-Plain">target_link_libraries(... gtest ${CMAKE_THREAD_LIBS_INIT})</span></code></pre></div>
+
+<p><br /></p>
 
 <h2 id="coveralls">Coveralls</h2>
 <p>As you did for Travis CI, you need to sign in with your GitHub account on <a href="http://coveralls.io/">Coveralls</a> and enable your project. </p>
@@ -248,6 +260,42 @@ the <em>–coverage</em> flag to both compiler and linker:</p>
     <span class="l-Scalar-Plain">target_link_libraries(tests PRIVATE --coverage)</span>
 <span class="l-Scalar-Plain">endif()</span></code></pre></div>
 
+<p><br /></p>
+
+<h2 id="appveyor">Appveyor</h2>
+<p>As a Linux user, Appveyor was a bit tricky as I couldn’t build locally. Be sure to remember:</p>
+
+<ul>
+  <li>Appveyor will NOT clone your project with <em>git clone –recursive</em>, so you need to run manually <em>git submodule update –init –recursive</em> after the checkout</li>
+  <li>It is not possible to build directly with CMake — Appveyor expects a sln file, you can generate it via CMake, e.g. <em>cmake -G “Visual Studio 15 2017 Win64”</em></li>
+  <li>The last 1.8.0 release of GTest does not build with Visual Studio 2017 — you need to add the definition <em>GTEST_HAS_TR1_TUPLE=0</em> to tell GTest not using ::tr1 stuff</li>
+</ul>
+
+<p>Here is my <em>appveyor.yml</em> file:</p>
+
+<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">version</span><span class="p-Indicator">:</span> <span class="s">&#39;1.0.{build}&#39;</span>
+
+<span class="l-Scalar-Plain">image</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">Visual Studio 2017</span>
+
+<span class="l-Scalar-Plain">platform</span><span class="p-Indicator">:</span>
+  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">x64</span>
+ 
+<span class="l-Scalar-Plain">configuration</span><span class="p-Indicator">:</span>
+  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">Release</span>
+  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">Debug</span>
+
+<span class="l-Scalar-Plain">install</span><span class="p-Indicator">:</span>
+    <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">git submodule update --init --recursive</span>
+
+<span class="l-Scalar-Plain">before_build</span><span class="p-Indicator">:</span>
+    <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">cmake -G &quot;Visual Studio 15 2017 Win64&quot; .</span>
+
+<span class="l-Scalar-Plain">build</span><span class="p-Indicator">:</span>
+  <span class="l-Scalar-Plain">project</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">$(APPVEYOR_BUILD_FOLDER)\$(APPVEYOR_PROJECT_NAME).sln</span>
+
+<span class="l-Scalar-Plain">test_script</span><span class="p-Indicator">:</span>
+  <span class="p-Indicator">-</span> <span class="s">&#39;%APPVEYOR_BUILD_FOLDER%\%CONFIGURATION%\tests.exe&#39;</span></code></pre></div>
+
 
         </section>
         <footer class="post-footer">
@@ -265,7 +313,7 @@ the <em>–coverage</em> flag to both compiler and linker:</p>
               <h4>David Gross</h4>
               <p class="bio"></p>
               <hr>
-              <p class="published">Published <time datetime="2017-09-10 14:52">10 Sep 2017</time></p>
+              <p class="published">Published <time datetime="2017-09-14 21:57">14 Sep 2017</time></p>
             </section>
           </div>
           
