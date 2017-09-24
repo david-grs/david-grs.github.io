@@ -185,17 +185,6 @@ in-place MetadaTree                 3            3            2
 You can find the benchmark on [my github](https://github.com/david-grs/inplace_examples). Here is the full output of `perf`:
 
 {% highlight cpp %}
-$ perf stat -e cycles,instructions,cache-misses ./inplace_examples inplace
-inplace3000000
-
- Performance counter stats for './inplace_examples inplace':
-
-         2 540 791 cycles                   
-         2 384 036 instructions              #    0,94  insns per cycle        
-            10 970 cache-misses                                                
-
-       0,001584907 seconds time elapsed
-
 $ perf stat -e cycles,instructions,cache-misses ./inplace_examples notinplace
 notinplace3000000
 
@@ -206,6 +195,17 @@ notinplace3000000
             20 059 cache-misses                                                
 
        0,531293829 seconds time elapsed
+
+$ perf stat -e cycles,instructions,cache-misses ./inplace_examples inplace
+inplace3000000
+
+ Performance counter stats for './inplace_examples inplace':
+
+         2 540 791 cycles                   
+         2 384 036 instructions              #    0,94  insns per cycle        
+            10 970 cache-misses                                                
+
+       0,001584907 seconds time elapsed
 {% endhighlight cpp %}
 
 
