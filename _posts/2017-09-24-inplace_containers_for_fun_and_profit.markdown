@@ -6,10 +6,10 @@ date:   2017-09-24 19:31
 ---
 
 Last year I posted about [static_any](http://david-grs.github.io/low_latency_stack_based_boost_any/) and I am back with a similar container that I implemented
-recently, [inplace_string](https://github.com/david-grs/inplace_string). 
+recently: [inplace_string](https://github.com/david-grs/inplace_string). 
 
 > For the record, `static_any` should have been be called `inplace_any`, but at this time I chose the prefix *static* as *Boost.StaticVector* was popular and it 
-> was clear to everybody what to expect from such container.
+> was clear to everybody what to expect from such a container.
 
 
 
