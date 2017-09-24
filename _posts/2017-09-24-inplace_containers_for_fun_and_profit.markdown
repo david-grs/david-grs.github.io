@@ -134,9 +134,8 @@ struct MetadataTree
 };
 {% endhighlight cpp %}
 <br />
-This object is very similar to `QVariantMap`, which is a `QMap<QString, QVariant>` &mdash; `QVariant` is actually not like `std::variant`, but similar to `std::any`. I used to
-use a lot such pattern, as it is convenient to use string as an index to various objects. One issue that I always faced with such pattern was speed: having to allocate memory due to many 
-`std::string` was always a show stopper.
+This object is very similar to `QVariantMap`, which is a `QMap<QString, QVariant>` &mdash; `QVariant` is actually not like `std::variant`, but similar to `std::any`. I use this pattern a lot, 
+as it is convenient to use a string to index various objects. One issue with this was speed: having to allocate memory due to many `std::string` is a major obstacle.
 
 Its equivalent with in-place containers *could be*:
 {% highlight cpp %}
@@ -158,7 +157,9 @@ struct MetadataTree
 };
 {% endhighlight cpp %}
 
-Here is an example of how we could use such object:
+Now, let's benchmark these two guys &mdash; I know, it is unfair, but we all love looking at numbers! For that, let's take a simple usage of 
+our `MetadataTree` class:
+
 {% highlight cpp %}
 template <typename TreeT>
 TreeT GetTree(int i, double d, bool b)
@@ -171,7 +172,7 @@ TreeT GetTree(int i, double d, bool b)
 }
 {% endhighlight cpp %}
 
-And I know it is unfair, but people like numbers, so let's benchmark this `GetTree` function with the above classes `MetadataTree`:
+... and the result (time, instructions and cycles per iteration):
 
 {% highlight cpp %}
 Test                        Time (ns)          INS          CYC 
@@ -181,7 +182,7 @@ in-place MetadaTree                 3            3            2
 {% endhighlight cpp %}
 <br />
 
-If you are not convinced, I let you compare the numbers from the `perf` output directly....:
+You can find the benchmark on [my github](https://github.com/david-grs/inplace_examples). Here is the full output of `perf`:
 
 {% highlight cpp %}
 $ perf stat -e cycles,instructions,cache-misses ./inplace_examples inplace
