@@ -204,9 +204,8 @@ all of them work nicely:</p>
 <span class="p">};</span></code></pre></div>
 
 <p><br />
-This object is very similar to <code>QVariantMap</code>, which is a <code>QMap&lt;QString, QVariant&gt;</code> — <code>QVariant</code> is actually not like <code>std::variant</code>, but similar to <code>std::any</code>. I used to
-use a lot such pattern, as it is convenient to use string as an index to various objects. One issue that I always faced with such pattern was speed: having to allocate memory due to many 
-<code>std::string</code> was always a show stopper.</p>
+This object is very similar to <code>QVariantMap</code>, which is a <code>QMap&lt;QString, QVariant&gt;</code> — <code>QVariant</code> is actually not like <code>std::variant</code>, but similar to <code>std::any</code>. I use this pattern a lot, 
+as it is convenient to use a string to index various objects. One issue with this was speed: having to allocate memory due to many <code>std::string</code> is a major obstacle.</p>
 
 <p>Its equivalent with in-place containers <em>could be</em>:</p>
 
@@ -227,7 +226,8 @@ use a lot such pattern, as it is convenient to use string as an index to various
     <span class="n">boost</span><span class="o">::</span><span class="n">container</span><span class="o">::</span><span class="n">static_vector</span><span class="o">&lt;</span><span class="n">Metadata</span><span class="p">,</span> <span class="n">MaxCapacity</span><span class="o">&gt;</span> <span class="n">_metadata</span><span class="p">;</span>
 <span class="p">};</span></code></pre></div>
 
-<p>Here is an example of how we could use such object:</p>
+<p>Now, let’s benchmark these two guys — I know, it is unfair, but we all love looking at numbers! For that, let’s take a simple usage of 
+our <code>MetadataTree</code> class:</p>
 
 <div class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">TreeT</span><span class="o">&gt;</span>
 <span class="n">TreeT</span> <span class="n">GetTree</span><span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="p">,</span> <span class="kt">double</span> <span class="n">d</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">b</span><span class="p">)</span>
@@ -239,7 +239,7 @@ use a lot such pattern, as it is convenient to use string as an index to various
   <span class="k">return</span> <span class="n">tree</span><span class="p">;</span>
 <span class="p">}</span></code></pre></div>
 
-<p>And I know it is unfair, but people like numbers, so let’s benchmark this <code>GetTree</code> function with the above classes <code>MetadataTree</code>:</p>
+<p>… and the result (time, instructions and cycles per iteration):</p>
 
 <div class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="n">Test</span>                        <span class="n">Time</span> <span class="p">(</span><span class="n">ns</span><span class="p">)</span>          <span class="n">INS</span>          <span class="n">CYC</span> 
 <span class="o">---------------------------------------------------------------</span>
@@ -248,7 +248,7 @@ use a lot such pattern, as it is convenient to use string as an index to various
 
 <p><br /></p>
 
-<p>If you are not convinced, I let you compare the numbers from the <code>perf</code> output directly….:</p>
+<p>You can find the benchmark on <a href="https://github.com/david-grs/inplace_examples">my github</a>. Here is the full output of <code>perf</code>:</p>
 
 <div class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="err">$</span> <span class="n">perf</span> <span class="n">stat</span> <span class="o">-</span><span class="n">e</span> <span class="n">cycles</span><span class="p">,</span><span class="n">instructions</span><span class="p">,</span><span class="n">cache</span><span class="o">-</span><span class="n">misses</span> <span class="p">.</span><span class="o">/</span><span class="n">inplace_examples</span> <span class="n">inplace</span>
 <span class="n">inplace3000000</span>
