@@ -136,15 +136,15 @@ change when the string reaches the maximum capacity.</p>
 
 <ul>
   <li>15 bytes with gcc 5</li>
-  <li>22 bytes with clang</li>
+  <li>22 bytes with clang 5</li>
   <li>15 bytes with VS 2015 and 2017</li>
 </ul>
 
-<p>Another reason is that even though everybody thinks that using gcc 5 is enough to get SSO, it is wrong: most of the popular Linux distributions (CentOS, RedHat, Debian) patched the glibc/gcc 
+<p>Another reason is that even though everybody thinks that using gcc 5 is enough to get SSO, it is wrong: as of this writing, most of the popular Linux distributions (CentOS, Debian, RedHat) patched the glibc/gcc 
 to keep the previous <code>std::string</code> implementation without SSO (and with COW!). This has been done to not break <code>std::string</code>’s ABI when C++11 has been release, cf this <a href="https://developers.redhat.com/blog/2015/02/05/gcc5-and-the-c11-abi/">post on RedHat developers’ blog</a>.</p>
 
-<p>More importantly, <code>inplace_string</code> guarantees that your code will never allocate. If, for any reason, your string grows more than you expected, it will throw… and you will know that you were wrong, as your application will likely crash! On the other hand,
-crossing fingers and relying on <code>std::string</code>’s SSO is someone a bet, and you will never know if one day, strings get bigger and start allocating.</p>
+<p>More importantly, <code>inplace_string</code> <em>guarantees</em> that your code will never allocate. If, for any reason, your string grows more than you expected, it will throw… and you will know that you were wrong, as 
+your application will likely crash! On the other hand, crossing fingers and relying on <code>std::string</code>’s SSO is somewhat a bet, and you will never know if one day, strings get bigger and start allocating.</p>
 
 <h2 id="stringview">string_view</h2>
 <p>In the current C++ world, <code>std::string</code> has a monopoly and the following code is common practice:</p>
@@ -203,9 +203,12 @@ all of them work nicely:</p>
     <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Metadata</span><span class="o">&gt;</span> <span class="n">_metadata</span><span class="p">;</span>
 <span class="p">};</span></code></pre></div>
 
-<p><br /></p>
+<p><br />
+This object is very similar to <code>QVariantMap</code>, which is a <code>QMap&lt;QString, QVariant&gt;</code> — <code>QVariant</code> is actually not like <code>std::variant</code>, but similar to <code>std::any</code>. I used to
+use a lot such pattern, as it is convenient to use string as an index to various objects. One issue that I always faced with such pattern was speed: having to allocate memory due to many 
+<code>std::string</code> was always a show stopper.</p>
 
-<p>Its equivalent with in-place containers is:</p>
+<p>Its equivalent with in-place containers <em>could be</em>:</p>
 
 <div class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="k">using</span> <span class="n">MetadataTag</span> <span class="o">=</span> <span class="n">inplace_string</span><span class="o">&lt;</span><span class="mi">15</span><span class="o">&gt;</span><span class="p">;</span>
 <span class="k">using</span> <span class="n">MetadataValue</span> <span class="o">=</span> <span class="n">static_any</span><span class="o">&lt;</span><span class="mi">16</span><span class="o">&gt;</span><span class="p">;</span>
@@ -223,6 +226,51 @@ all of them work nicely:</p>
     <span class="k">static</span> <span class="k">constexpr</span> <span class="n">MaxCapacity</span> <span class="o">=</span> <span class="mi">8</span><span class="p">;</span>
     <span class="n">boost</span><span class="o">::</span><span class="n">container</span><span class="o">::</span><span class="n">static_vector</span><span class="o">&lt;</span><span class="n">Metadata</span><span class="p">,</span> <span class="n">MaxCapacity</span><span class="o">&gt;</span> <span class="n">_metadata</span><span class="p">;</span>
 <span class="p">};</span></code></pre></div>
+
+<p>Here is an example of how we could use such object:</p>
+
+<div class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">TreeT</span><span class="o">&gt;</span>
+<span class="n">TreeT</span> <span class="n">GetTree</span><span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="p">,</span> <span class="kt">double</span> <span class="n">d</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">b</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">TreeT</span> <span class="n">tree</span><span class="p">;</span>
+  <span class="n">tree</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;metadata1&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
+  <span class="n">tree</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;metadata2&quot;</span><span class="p">,</span> <span class="n">d</span><span class="p">);</span>
+  <span class="n">tree</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;metadata3&quot;</span><span class="p">,</span> <span class="n">b</span><span class="p">);</span>
+  <span class="k">return</span> <span class="n">tree</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div>
+
+<p>And I know it is unfair, but people like numbers, so let’s benchmark this <code>GetTree</code> function with the above classes <code>MetadataTree</code>:</p>
+
+<div class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="n">Test</span>                        <span class="n">Time</span> <span class="p">(</span><span class="n">ns</span><span class="p">)</span>          <span class="n">INS</span>          <span class="n">CYC</span> 
+<span class="o">---------------------------------------------------------------</span>
+<span class="n">MetadaTree</span>                        <span class="mi">536</span>        <span class="mi">2</span><span class="p">,</span><span class="mi">205</span>        <span class="mi">1</span><span class="p">,</span><span class="mo">010</span> 
+<span class="n">in</span><span class="o">-</span><span class="n">place</span> <span class="n">MetadaTree</span>                 <span class="mi">3</span>            <span class="mi">3</span>            <span class="mi">2</span></code></pre></div>
+
+<p><br /></p>
+
+<p>If you are not convinced, I let you compare the numbers from the <code>perf</code> output directly….:</p>
+
+<div class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="err">$</span> <span class="n">perf</span> <span class="n">stat</span> <span class="o">-</span><span class="n">e</span> <span class="n">cycles</span><span class="p">,</span><span class="n">instructions</span><span class="p">,</span><span class="n">cache</span><span class="o">-</span><span class="n">misses</span> <span class="p">.</span><span class="o">/</span><span class="n">inplace_examples</span> <span class="n">inplace</span>
+<span class="n">inplace3000000</span>
+
+ <span class="n">Performance</span> <span class="n">counter</span> <span class="n">stats</span> <span class="k">for</span> <span class="err">&#39;</span><span class="p">.</span><span class="o">/</span><span class="n">inplace_examples</span> <span class="n">inplace</span><span class="err">&#39;</span><span class="o">:</span>
+
+         <span class="mi">2</span> <span class="mi">540</span> <span class="mi">791</span> <span class="n">cycles</span>                   
+         <span class="mi">2</span> <span class="mi">384</span> <span class="mo">036</span> <span class="n">instructions</span>              <span class="err">#</span>    <span class="mi">0</span><span class="p">,</span><span class="mi">94</span>  <span class="n">insns</span> <span class="n">per</span> <span class="n">cycle</span>        
+            <span class="mi">10</span> <span class="mi">970</span> <span class="n">cache</span><span class="o">-</span><span class="n">misses</span>                                                
+
+       <span class="mi">0</span><span class="p">,</span><span class="mo">0015</span><span class="mi">84907</span> <span class="n">seconds</span> <span class="n">time</span> <span class="n">elapsed</span>
+
+<span class="err">$</span> <span class="n">perf</span> <span class="n">stat</span> <span class="o">-</span><span class="n">e</span> <span class="n">cycles</span><span class="p">,</span><span class="n">instructions</span><span class="p">,</span><span class="n">cache</span><span class="o">-</span><span class="n">misses</span> <span class="p">.</span><span class="o">/</span><span class="n">inplace_examples</span> <span class="n">notinplace</span>
+<span class="n">notinplace3000000</span>
+
+ <span class="n">Performance</span> <span class="n">counter</span> <span class="n">stats</span> <span class="k">for</span> <span class="err">&#39;</span><span class="p">.</span><span class="o">/</span><span class="n">inplace_examples</span> <span class="n">notinplace</span><span class="err">&#39;</span><span class="o">:</span>
+
+     <span class="mi">1</span> <span class="mo">005</span> <span class="mi">689</span> <span class="mi">341</span> <span class="n">cycles</span>                   
+     <span class="mi">2</span> <span class="mi">209</span> <span class="mi">217</span> <span class="mi">853</span> <span class="n">instructions</span>              <span class="err">#</span>    <span class="mi">2</span><span class="p">,</span><span class="mi">20</span>  <span class="n">insns</span> <span class="n">per</span> <span class="n">cycle</span>        
+            <span class="mi">20</span> <span class="mo">05</span><span class="mi">9</span> <span class="n">cache</span><span class="o">-</span><span class="n">misses</span>                                                
+
+       <span class="mi">0</span><span class="p">,</span><span class="mi">531293829</span> <span class="n">seconds</span> <span class="n">time</span> <span class="n">elapsed</span></code></pre></div>
 
 
         </section>
