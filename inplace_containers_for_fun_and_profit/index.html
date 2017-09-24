@@ -8,7 +8,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
   <title>In-place containers for fun and profit</title>
-  <meta name="description" content="Last year ago I posted about static_any and I am back with a similar container that I implementedrecently, inplace_string. " />
+  <meta name="description" content="Last year I posted about static_any and I am back with a similar container that I implementedrecently, inplace_string. " />
 
   <meta name="HandheldFriendly" content="True" />
   <meta name="MobileOptimized" content="320" />
@@ -19,7 +19,7 @@
   <meta property="og:site_name" content="Thoughts from a Wall Street developer" />
   <meta property="og:title" content="In-place containers for fun and profit"/>
   
-  <meta property="og:description" content="Last year ago I posted about static_any and I am back with a similar container that I implementedrecently, inplace_string. " />
+  <meta property="og:description" content="Last year I posted about static_any and I am back with a similar container that I implementedrecently, inplace_string. " />
   
   <meta property="og:image" content="http://david-grs.github.io" />
   <meta property="og:url" content="http://david-grs.github.io/inplace_containers_for_fun_and_profit" >
@@ -87,7 +87,7 @@
             <span class="post-reading-time"></span> read
           </div>
           <a name="topofpage"></a>
-          <p>Last year ago I posted about <a href="http://david-grs.github.io/low_latency_stack_based_boost_any/">static_any</a> and I am back with a similar container that I implemented
+          <p>Last year I posted about <a href="http://david-grs.github.io/low_latency_stack_based_boost_any/">static_any</a> and I am back with a similar container that I implemented
 recently, <a href="https://github.com/david-grs/inplace_string">inplace_string</a>. </p>
 
 <blockquote>
@@ -112,13 +112,13 @@ was clear to everybody what to expect from such container.</p>
 What you get as benefits:</p>
 
 <ul>
-  <li>Faster string operations: string construction and destruction are much faster as there is no call to <code>malloc</code> or <code>free</code>. Other operations are also slightly faster: as its buffer
+  <li>Faster string operations: string construction and destruction are much faster since no memory allocation takes place. Other operations are also slightly faster: as its buffer
 does not grow, <code>inplace_string</code> benefits from a simpler code with less branches.</li>
-  <li>Cache-friendly: close to your other class members, your cache likes it.</li>
-  <li>Simplicity: if allocating memory dynamically is not an option and you don’t feel implementing an Allocator.</li>
+  <li>Cache-friendly: it stays close to your other class members, your cache likes it.</li>
+  <li>Simplicity: it allows you to avoid dynamic allocations without implementing your own memory allocator.</li>
 </ul>
 
-<p>As for the implementation, no surprises: the underlying is <code>std::array&lt;CharT, N&gt;</code> and it uses the famous trick of storing the remaining size within the last byte of the string — 
+<p>As for the implementation, no surprises: the underlying container is <code>std::array&lt;CharT, N&gt;</code> and it uses the famous trick — made popular by fbstring — of storing the remaining size within the last byte of the string — 
 if you don’t know it yet <a href="https://github.com/david-grs/inplace_string/blob/81defa14a0650fa804b9c83624b7735084258a3b/inplace_string.h#L287">look here</a> and think how the value will 
 change when the string reaches the maximum capacity.</p>
 
@@ -130,10 +130,24 @@ change when the string reaches the maximum capacity.</p>
 <p><br /></p>
 
 <h2 id="stdstrings-sso">std::string’s SSO</h2>
-<p><code>inplace_string</code> does not overlap much with <code>std::string</code>’s SSO. </p>
+<p>At first glance, it might seem that <code>inplace_string</code> overlaps with <code>std::string</code>’s SSO (Short String Optimization), although it does not.</p>
+
+<p>One of the reason is that SSO is implementation dependent:</p>
+
+<ul>
+  <li>15 bytes with gcc 5</li>
+  <li>22 bytes with clang</li>
+  <li>15 bytes with VS 2015 and 2017</li>
+</ul>
+
+<p>Another reason is that even though everybody thinks that using gcc 5 is enough to get SSO, it is wrong: most of the popular Linux distributions (CentOS, RedHat, Debian) patched the glibc/gcc 
+to keep the previous <code>std::string</code> implementation without SSO (and with COW!). This has been done to not break <code>std::string</code>’s ABI when C++11 has been release, cf this <a href="https://developers.redhat.com/blog/2015/02/05/gcc5-and-the-c11-abi/">post on RedHat developers’ blog</a>.</p>
+
+<p>More importantly, <code>inplace_string</code> guarantees that your code will never allocate. If, for any reason, your string grows more than you expected, it will throw… and you will know that you were wrong, as your application will likely crash! On the other hand,
+crossing fingers and relying on <code>std::string</code>’s SSO is someone a bet, and you will never know if one day, strings get bigger and start allocating.</p>
 
 <h2 id="stringview">string_view</h2>
-<p>In the current C++ world, <code>std::string</code> is in a monopoly and the following code is common practice:</p>
+<p>In the current C++ world, <code>std::string</code> has a monopoly and the following code is common practice:</p>
 
 <div class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="kt">void</span> <span class="nf">foo</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">bar</span><span class="p">)</span>
 <span class="p">{</span>
@@ -178,13 +192,15 @@ all of them work nicely:</p>
 
 <span class="k">using</span> <span class="n">Metadata</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">MetadataTag</span><span class="p">,</span> <span class="n">MetadataValue</span><span class="o">&gt;</span><span class="p">;</span>
 
-<span class="k">struct</span> <span class="nl">MetadataTree</span> <span class="p">:</span> <span class="k">public</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Metadata</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">MetadataTree</span> 
 <span class="p">{</span>
     <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">StringT</span><span class="p">,</span> <span class="k">typename</span> <span class="n">ValueT</span><span class="o">&gt;</span>
     <span class="kt">void</span> <span class="n">Add</span><span class="p">(</span><span class="n">StringT</span><span class="o">&amp;&amp;</span> <span class="n">str</span><span class="p">,</span> <span class="n">ValueT</span><span class="o">&amp;&amp;</span> <span class="n">value</span><span class="p">)</span>
     <span class="p">{</span>
-        <span class="k">this</span><span class="o">-&gt;</span><span class="n">emplace_back</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">StringT</span><span class="o">&gt;</span><span class="p">(</span><span class="n">str</span><span class="p">),</span> <span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">ValueT</span><span class="o">&gt;</span><span class="p">(</span><span class="n">value</span><span class="p">));</span>
+        <span class="n">_metadata</span><span class="p">.</span><span class="n">emplace_back</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">StringT</span><span class="o">&gt;</span><span class="p">(</span><span class="n">str</span><span class="p">),</span> <span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">ValueT</span><span class="o">&gt;</span><span class="p">(</span><span class="n">value</span><span class="p">));</span>
     <span class="p">}</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Metadata</span><span class="o">&gt;</span> <span class="n">_metadata</span><span class="p">;</span>
 <span class="p">};</span></code></pre></div>
 
 <p><br /></p>
@@ -196,13 +212,16 @@ all of them work nicely:</p>
 
 <span class="k">using</span> <span class="n">Metadata</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">MetadataTag</span><span class="p">,</span> <span class="n">MetadataValue</span><span class="o">&gt;</span><span class="p">;</span>
 
-<span class="k">struct</span> <span class="nl">MetadataTree</span> <span class="p">:</span> <span class="k">public</span> <span class="n">boost</span><span class="o">::</span><span class="n">container</span><span class="o">::</span><span class="n">static_vector</span><span class="o">&lt;</span><span class="n">Metadata</span><span class="p">,</span> <span class="mi">8</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">MetadataTree</span> 
 <span class="p">{</span>
     <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">StringT</span><span class="p">,</span> <span class="k">typename</span> <span class="n">ValueT</span><span class="o">&gt;</span>
     <span class="kt">void</span> <span class="n">Add</span><span class="p">(</span><span class="n">StringT</span><span class="o">&amp;&amp;</span> <span class="n">str</span><span class="p">,</span> <span class="n">ValueT</span><span class="o">&amp;&amp;</span> <span class="n">value</span><span class="p">)</span>
     <span class="p">{</span>
-        <span class="k">this</span><span class="o">-&gt;</span><span class="n">emplace_back</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">StringT</span><span class="o">&gt;</span><span class="p">(</span><span class="n">str</span><span class="p">),</span> <span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">ValueT</span><span class="o">&gt;</span><span class="p">(</span><span class="n">value</span><span class="p">));</span>
+        <span class="n">_metadata</span><span class="p">.</span><span class="n">emplace_back</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">StringT</span><span class="o">&gt;</span><span class="p">(</span><span class="n">str</span><span class="p">),</span> <span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">ValueT</span><span class="o">&gt;</span><span class="p">(</span><span class="n">value</span><span class="p">));</span>
     <span class="p">}</span>
+
+    <span class="k">static</span> <span class="k">constexpr</span> <span class="n">MaxCapacity</span> <span class="o">=</span> <span class="mi">8</span><span class="p">;</span>
+    <span class="n">boost</span><span class="o">::</span><span class="n">container</span><span class="o">::</span><span class="n">static_vector</span><span class="o">&lt;</span><span class="n">Metadata</span><span class="p">,</span> <span class="n">MaxCapacity</span><span class="o">&gt;</span> <span class="n">_metadata</span><span class="p">;</span>
 <span class="p">};</span></code></pre></div>
 
 
