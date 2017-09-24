@@ -6,18 +6,18 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Sun, 24 Sep 2017 22:57:54 +0200</pubDate>
-    <lastBuildDate>Sun, 24 Sep 2017 22:57:54 +0200</lastBuildDate>
+    <pubDate>Sun, 24 Sep 2017 23:00:10 +0200</pubDate>
+    <lastBuildDate>Sun, 24 Sep 2017 23:00:10 +0200</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
     
       <item>
         <title>In-place containers for fun and profit</title>
         <description>&lt;p&gt;Last year I posted about &lt;a href=&quot;http://david-grs.github.io/low_latency_stack_based_boost_any/&quot;&gt;static_any&lt;/a&gt; and I am back with a similar container that I implemented
-recently, &lt;a href=&quot;https://github.com/david-grs/inplace_string&quot;&gt;inplace_string&lt;/a&gt;. &lt;/p&gt;
+recently: &lt;a href=&quot;https://github.com/david-grs/inplace_string&quot;&gt;inplace_string&lt;/a&gt;. &lt;/p&gt;
 
 &lt;blockquote&gt;
   &lt;p&gt;For the record, &lt;code&gt;static_any&lt;/code&gt; should have been be called &lt;code&gt;inplace_any&lt;/code&gt;, but at this time I chose the prefix &lt;em&gt;static&lt;/em&gt; as &lt;em&gt;Boost.StaticVector&lt;/em&gt; was popular and it 
-was clear to everybody what to expect from such container.&lt;/p&gt;
+was clear to everybody what to expect from such a container.&lt;/p&gt;
 &lt;/blockquote&gt;
 
 &lt;h2 id=&quot;inplacestring&quot;&gt;inplace_string&lt;/h2&gt;
