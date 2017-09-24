@@ -6,9 +6,204 @@
 </description>
     <link>http://david-grs.github.io/</link>
     <atom:link href="http://david-grs.github.io/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Thu, 14 Sep 2017 23:50:50 +0200</pubDate>
-    <lastBuildDate>Thu, 14 Sep 2017 23:50:50 +0200</lastBuildDate>
+    <pubDate>Sun, 24 Sep 2017 22:07:38 +0200</pubDate>
+    <lastBuildDate>Sun, 24 Sep 2017 22:07:38 +0200</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
+    
+      <item>
+        <title>In-place containers for fun and profit</title>
+        <description>&lt;p&gt;Last year I posted about &lt;a href=&quot;http://david-grs.github.io/low_latency_stack_based_boost_any/&quot;&gt;static_any&lt;/a&gt; and I am back with a similar container that I implemented
+recently, &lt;a href=&quot;https://github.com/david-grs/inplace_string&quot;&gt;inplace_string&lt;/a&gt;. &lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;For the record, &lt;code&gt;static_any&lt;/code&gt; should have been be called &lt;code&gt;inplace_any&lt;/code&gt;, but at this time I chose the prefix &lt;em&gt;static&lt;/em&gt; as &lt;em&gt;Boost.StaticVector&lt;/em&gt; was popular and it 
+was clear to everybody what to expect from such container.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2 id=&quot;inplacestring&quot;&gt;inplace_string&lt;/h2&gt;
+&lt;p&gt;The idea behind &lt;code&gt;inplace_string&lt;/code&gt; is to get a full replacement of C++17’s &lt;code&gt;std::string&lt;/code&gt;, with an in-place memory storage:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-cpp&quot; data-lang=&quot;cpp&quot;&gt;&lt;span class=&quot;k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Name&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;inplace_string&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;15&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// 16 bytes on stack, size included&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;Name&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; 
+
+&lt;span class=&quot;k&quot;&gt;auto&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;it&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;find&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;r&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;assert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;it&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;npos&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;bar&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  
+&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// implicit string_view construction&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;
+What you get as benefits:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Faster string operations: string construction and destruction are much faster since no memory allocation takes place. Other operations are also slightly faster: as its buffer
+does not grow, &lt;code&gt;inplace_string&lt;/code&gt; benefits from a simpler code with less branches.&lt;/li&gt;
+  &lt;li&gt;Cache-friendly: it stays close to your other class members, your cache likes it.&lt;/li&gt;
+  &lt;li&gt;Simplicity: it allows you to avoid dynamic allocations without implementing your own memory allocator.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;As for the implementation, no surprises: the underlying container is &lt;code&gt;std::array&amp;lt;CharT, N&amp;gt;&lt;/code&gt; and it uses the famous trick — made popular by fbstring — of storing the remaining size within the last byte of the string — 
+if you don’t know it yet &lt;a href=&quot;https://github.com/david-grs/inplace_string/blob/81defa14a0650fa804b9c83624b7735084258a3b/inplace_string.h#L287&quot;&gt;look here&lt;/a&gt; and think how the value will 
+change when the string reaches the maximum capacity.&lt;/p&gt;
+
+&lt;p&gt;One of the only difference with &lt;code&gt;std::string&lt;/code&gt; is the presence of a constructor from &lt;code&gt;const CharT(&amp;amp;)[M])&lt;/code&gt;, allowing a compile-time error it the input exceeds the maximum capacity:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-cpp&quot; data-lang=&quot;cpp&quot;&gt;&lt;span class=&quot;n&quot;&gt;inplace_string&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;too_small&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;too_small&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;foobar&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// error: static_assert failed &amp;quot;basic_inplace_string: size exceeds maximum capacity&amp;quot;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;stdstrings-sso&quot;&gt;std::string’s SSO&lt;/h2&gt;
+&lt;p&gt;At first glance, it might seem that &lt;code&gt;inplace_string&lt;/code&gt; overlaps with &lt;code&gt;std::string&lt;/code&gt;’s SSO (Short String Optimization), although it does not.&lt;/p&gt;
+
+&lt;p&gt;One of the reason is that SSO is implementation dependent:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;15 bytes with gcc 5&lt;/li&gt;
+  &lt;li&gt;22 bytes with clang 5&lt;/li&gt;
+  &lt;li&gt;15 bytes with VS 2015 and 2017&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Another reason is that even though everybody thinks that using gcc 5 is enough to get SSO, it is wrong: as of this writing, most of the popular Linux distributions (CentOS, Debian, RedHat) patched the glibc/gcc 
+to keep the previous &lt;code&gt;std::string&lt;/code&gt; implementation without SSO (and with COW!). This has been done to not break &lt;code&gt;std::string&lt;/code&gt;’s ABI when C++11 has been release, cf this &lt;a href=&quot;https://developers.redhat.com/blog/2015/02/05/gcc5-and-the-c11-abi/&quot;&gt;post on RedHat developers’ blog&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;More importantly, &lt;code&gt;inplace_string&lt;/code&gt; &lt;em&gt;guarantees&lt;/em&gt; that your code will never allocate. If, for any reason, your string grows more than you expected, it will throw… and you will know that you were wrong, as 
+your application will likely crash! On the other hand, crossing fingers and relying on &lt;code&gt;std::string&lt;/code&gt;’s SSO is somewhat a bet, and you will never know if one day, strings get bigger and start allocating.&lt;/p&gt;
+
+&lt;h2 id=&quot;stringview&quot;&gt;string_view&lt;/h2&gt;
+&lt;p&gt;In the current C++ world, &lt;code&gt;std::string&lt;/code&gt; has a monopoly and the following code is common practice:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-cpp&quot; data-lang=&quot;cpp&quot;&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;foo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;string&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+   &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;
+In a code base with &lt;code&gt;std::string&lt;/code&gt; as unique string class, this code is reasonable — it is not when multiple string classes live together, as it defeats the
+purpose of not using &lt;code&gt;std::string&lt;/code&gt; if you need to do conversions all over the place. &lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-cpp&quot; data-lang=&quot;cpp&quot;&gt;&lt;span class=&quot;n&quot;&gt;foo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foobar&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// compiles, but allocates&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;inplace_string&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;15&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ss&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;foobar&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;foo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ss&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// does not compile, std::string does not know inplace_string&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;foo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ss&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;c_str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;());&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// compiles, but allocates and copies the string&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;
+To solve this issue, C++17 brings us &lt;code&gt;std::string_view&lt;/code&gt;: &lt;code&gt;std::string&lt;/code&gt;, &lt;code&gt;inplace_string&lt;/code&gt; and friends implement an implicit cast operator to &lt;code&gt;std::string_view&lt;/code&gt;, and mixing 
+all of them work nicely:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-cpp&quot; data-lang=&quot;cpp&quot;&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;foo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;string_view&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+   &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;foo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foobar&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// compiles, does not allocate&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;inplace_string&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;15&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ss&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;foobar&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;foo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ss&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// compiles, building string_view is cheap (taking pointer + size)&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;foobar&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;foo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// compiles&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;mixing-in-place-containers&quot;&gt;Mixing in-place containers&lt;/h2&gt;
+&lt;p&gt;Let’s consider the following code:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-cpp&quot; data-lang=&quot;cpp&quot;&gt;&lt;span class=&quot;k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;MetadataTag&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;MetadataValue&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;experimental&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;any&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Metadata&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pair&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;MetadataTag&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;MetadataValue&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;MetadataTree&lt;/span&gt; 
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;template&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;typename&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;StringT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;typename&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ValueT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Add&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;StringT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ValueT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;_metadata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;emplace_back&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;forward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;StringT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;forward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ValueT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+    &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;vector&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Metadata&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_metadata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;
+This object is very similar to &lt;code&gt;QVariantMap&lt;/code&gt;, which is a &lt;code&gt;QMap&amp;lt;QString, QVariant&amp;gt;&lt;/code&gt; — &lt;code&gt;QVariant&lt;/code&gt; is actually not like &lt;code&gt;std::variant&lt;/code&gt;, but similar to &lt;code&gt;std::any&lt;/code&gt;. I use this pattern a lot, 
+as it is convenient to use a string to index various objects. One issue with this was speed: having to allocate memory due to many &lt;code&gt;std::string&lt;/code&gt; is a major obstacle.&lt;/p&gt;
+
+&lt;p&gt;Its equivalent with in-place containers &lt;em&gt;could be&lt;/em&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-cpp&quot; data-lang=&quot;cpp&quot;&gt;&lt;span class=&quot;k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;MetadataTag&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;inplace_string&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;15&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;MetadataValue&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;static_any&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Metadata&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pair&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;MetadataTag&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;MetadataValue&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;MetadataTree&lt;/span&gt; 
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;template&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;typename&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;StringT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;typename&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ValueT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Add&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;StringT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ValueT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;_metadata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;emplace_back&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;forward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;StringT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;forward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ValueT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+    &lt;span class=&quot;k&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;constexpr&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;MaxCapacity&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;boost&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;container&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;static_vector&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Metadata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;MaxCapacity&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_metadata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Now, let’s benchmark these two guys — I know, it is unfair, but we all love looking at numbers! For that, let’s take a simple usage of 
+our &lt;code&gt;MetadataTree&lt;/code&gt; class:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-cpp&quot; data-lang=&quot;cpp&quot;&gt;&lt;span class=&quot;k&quot;&gt;template&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;typename&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;TreeT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;TreeT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;GetTree&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;double&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;d&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;bool&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;TreeT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tree&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;tree&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Add&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;metadata1&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;tree&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Add&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;metadata2&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;d&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;tree&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Add&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;metadata3&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tree&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;… and the result (time, instructions and cycles per iteration):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-cpp&quot; data-lang=&quot;cpp&quot;&gt;&lt;span class=&quot;n&quot;&gt;Test&lt;/span&gt;                        &lt;span class=&quot;n&quot;&gt;Time&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ns&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;          &lt;span class=&quot;n&quot;&gt;INS&lt;/span&gt;          &lt;span class=&quot;n&quot;&gt;CYC&lt;/span&gt; 
+&lt;span class=&quot;o&quot;&gt;---------------------------------------------------------------&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;MetadaTree&lt;/span&gt;                        &lt;span class=&quot;mi&quot;&gt;536&lt;/span&gt;        &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;205&lt;/span&gt;        &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mo&quot;&gt;010&lt;/span&gt; 
+&lt;span class=&quot;n&quot;&gt;in&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;place&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;MetadaTree&lt;/span&gt;                 &lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;            &lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;            &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;You can find the benchmark on &lt;a href=&quot;https://github.com/david-grs/inplace_examples&quot;&gt;my github&lt;/a&gt;. Here is the full output of &lt;code&gt;perf&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-cpp&quot; data-lang=&quot;cpp&quot;&gt;&lt;span class=&quot;err&quot;&gt;$&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;perf&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;stat&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;e&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cycles&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;instructions&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;misses&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;inplace_examples&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;inplace&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;inplace3000000&lt;/span&gt;
+
+ &lt;span class=&quot;n&quot;&gt;Performance&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;counter&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;stats&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;inplace_examples&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;inplace&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;
+
+         &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;540&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;791&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cycles&lt;/span&gt;                   
+         &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;384&lt;/span&gt; &lt;span class=&quot;mo&quot;&gt;036&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;instructions&lt;/span&gt;              &lt;span class=&quot;err&quot;&gt;#&lt;/span&gt;    &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;94&lt;/span&gt;  &lt;span class=&quot;n&quot;&gt;insns&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;per&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cycle&lt;/span&gt;        
+            &lt;span class=&quot;mi&quot;&gt;10&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;970&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;misses&lt;/span&gt;                                                
+
+       &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mo&quot;&gt;0015&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;84907&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;seconds&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;time&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;elapsed&lt;/span&gt;
+
+&lt;span class=&quot;err&quot;&gt;$&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;perf&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;stat&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;e&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cycles&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;instructions&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;misses&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;inplace_examples&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;notinplace&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;notinplace3000000&lt;/span&gt;
+
+ &lt;span class=&quot;n&quot;&gt;Performance&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;counter&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;stats&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;inplace_examples&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;notinplace&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;
+
+     &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;mo&quot;&gt;005&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;689&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;341&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cycles&lt;/span&gt;                   
+     &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;209&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;217&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;853&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;instructions&lt;/span&gt;              &lt;span class=&quot;err&quot;&gt;#&lt;/span&gt;    &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;20&lt;/span&gt;  &lt;span class=&quot;n&quot;&gt;insns&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;per&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cycle&lt;/span&gt;        
+            &lt;span class=&quot;mi&quot;&gt;20&lt;/span&gt; &lt;span class=&quot;mo&quot;&gt;05&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;misses&lt;/span&gt;                                                
+
+       &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;531293829&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;seconds&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;time&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;elapsed&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+</description>
+        <pubDate>Sun, 24 Sep 2017 19:31:00 +0200</pubDate>
+        <link>http://david-grs.github.io/inplace_containers_for_fun_and_profit</link>
+        <guid isPermaLink="true">http://david-grs.github.io/inplace_containers_for_fun_and_profit</guid>
+        
+        
+      </item>
     
       <item>
         <title>C++ CI: Travis, CMake, GTest, Coveralls &amp; Appveyor</title>
