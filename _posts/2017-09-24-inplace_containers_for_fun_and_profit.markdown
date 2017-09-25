@@ -177,8 +177,8 @@ TreeT GetTree(int i, double d, bool b)
 {% highlight cpp %}
 Test                        Time (ns)          INS          CYC 
 ---------------------------------------------------------------
-MetadaTree                        536        2,205        1,010 
-in-place MetadaTree                 3            3            2 
+MetadataTree                      536        2,205        1,010 
+in-place MetadataTree               3            3            2 
 {% endhighlight cpp %}
 <br />
 
