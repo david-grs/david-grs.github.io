@@ -33,7 +33,7 @@
         background: #e7e8e2;
         border-radius: 5px;
       }
-      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono'; }
+      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono'; font-size: 1.1em; }
       .remark-code-line-highlighted     { background-color: #373832; }
       .pull-left {
         float: left;
@@ -120,7 +120,7 @@
 class: center, middle, inverse
 
 # Introduction to Qt
-by [David Gross](https://github.com/david-grs) - 16/11/2017
+[David Gross](https://github.com/david-grs) &mdash; 16/11/2017
 
 ---
 
@@ -129,7 +129,9 @@ by [David Gross](https://github.com/david-grs) - 16/11/2017
 ]
 
 .right-column[
-Having a quick tour of the Qt concepts and the main classes of Qt Core:
+An overview of Qt's concepts and core classes
+
+- What is Qt?
 
 - QObject
 
@@ -145,32 +147,797 @@ Having a quick tour of the Qt concepts and the main classes of Qt Core:
 ]
 
 ---
+
+class: center, middle, inverse
+# What is Qt?
+
+---
+
 .left-column[
   ## What is Qt?
 ]
 .right-column[
-- Originally GUI only: best cross-platform GUI lib in C++ 
+- First release in 1991
 
-- Gained so much popularity that many developers use it for non-GUI stuff: Core, Xml, Json, Networking, Databases, Multimedia, ... 
+- Originally a cross-platform GUI lib in C++
+
+- Much more than that now, many projects don't use Qt Gui at all, but the other modules
+]
+
+---
+
+.left-column[
+  ## What is Qt? 
+]
+.right-column[
+
+- First release in 1991
+
+- Originally a cross-platform GUI lib in C++ 
+
+- Much more than that now, many projects don't use Qt Gui at all, but the other modules
+
+- Qt Essentials
+
+   - Qt Core
+   - Qt Gui
+   - Qt Network 
+   - Qt Multimedia
+   - ...
+
+- Qt Add-Ons
+
+   - Qt Concurrent
+   - Qt WebEngine
+   - Qt WebSockets
+   - Qt 3D
+   -  ...
+]
+
+---
+.left-column[
+  ## What is Qt? 
+]
+.right-column[
+
 
 - Philosophy very different than STL/Boost
 
-   - syntax is not just sugar: easy of use 
+   - Syntax isn't just sugar
 
-   - inheritance rather than templates
+   - Inheritance rather than templates
 
    - Qt version of containers & algorithms
 
-   - memory management: you are going to use the `new` operator!
+   - Memory management.red[*]
 
    - ABI & API compatibility
+
+.footnote[.red[*] Spoiler: you are going to use `operator new`!]
+
 ]
 
+---
+
+class: center, middle, inverse
+# QObject
+
+---
+
+.left-column[
+  ## QObject
+]
+.right-column[
+- Base class of all widget classes and many Qt classes
+
+    - Exceptions: containers, lightweight types
+
+- Offers support for memory management, signals/slots, meta info, `qobject_cast`, event loop, ... 
+
+- Every QObject has a parent
+
+    *Hierarchical and queryable object tree that organize object ownership in a natural way*
+]
+
+---
+
+.left-column[
+  ## QObject
+]
+.right-column[
+```c++
+#include <QString>
+#include <QDebug>
+
+class Item : public QObject
+{
+*    Q_OBJECT
+
+public:
+    Item(const QString& name, 
+*        QObject* parent = nullptr) :
+      QObject(parent)
+    {   
+*        setObjectName(name);
+    }   
+
+    ~Item() 
+    {   
+       qDebug() << "destroying" << objectName(); 
+    }   
+};
+```
+]
+
+---
+
+.left-column[
+  ## QObject
+]
+.right-column[
+```c++
+#include "item.h"
+
+int main()
+{
+    Item root("root");
+
+*   Item* foo = new Item("foo", &root);
+
+    Item* bar = new Item("bar", foo);
+    Item* baz = new Item("baz", &root);
+
+    root.dumpObjectTree();
+
+    return 0;
+}
+```
+]
+---
+
+.left-column[
+  ## QObject
+]
+.right-column[
+```c++
+#include "item.h"
+
+int main()
+{
+	Item root("root");
+
+*   Item* foo = new Item("foo", &root);
+
+	Item* bar = new Item("bar", foo);
+	Item* baz = new Item("baz", &root);
+
+	root.dumpObjectTree();
+
+	return 0;
+}
+```
+
+```c++
+QObject::root
+    QObject::foo
+         QObject::bar
+    QObject::baz
+
+destroying "root"
+destroying "foo"
+destroying "bar"
+destroying "baz"
+```
+
+]
+
+---
+
+.left-column[
+  ## QObject
+]
+.right-column[
+- Memory management
+   - Rule of thumb: allocate with `new` &mdash; no stack, no smart pointer: can cause double-free
+
+   - Deleting the parent will delete recursively all children 
+
+   - Deleting a child will unparent it  
+] 
+
+---
+.left-column[
+  ## QObject
+]
+.right-column[
+- Memory management
+   - Rule of thumb: allocate with `new` &mdash; no stack, no smart pointer: can cause double-free
+
+   - Deleting the parent will delete recursively all children 
+
+   - Deleting a child will unparent it  
+
+
+- Named: debugging, finding widget
+
+  `QList<T> findChildren<T>(const QRegExp&)`
+
+- All widgets don't need to be stored as class attributes: you create them (link to parent), connect their signals/slots, that's all 
+
+- Cannot be copied: name? connections? parent?
+] 
+
+---
+
+.left-column[
+  ## QObject Classic mistakes
+]
+.right-column[
+
+- `QObject` declaration should be in a `.h` file
+
+- All `QObject`-based class should declare `Q_OBJECT` 
+
+- Allocate `QObject` children objects on the heap 
+
+- If multiple inheritance: only one inherited class can inherit from `QObject`, and it should be the *first one*
+]
+
+---
+
+class: center, middle, inverse
+# Signals & Slots
+
+
+---
+.left-column[
+  ## Signals & Slots
+]
+.right-column[
+- Publish/subsribe (1 to N) pattern
+
+- Part of class declaration
+
+- Generated by `moc`, the MOC (Meta Object Compiler)
+]
+
+---
+
+
+.left-column[
+  ## Signals & Slots
+]
+.right-column[
+A `Timer` class example
+
+```c++
+class QTimer : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit QTimer(QObject *parent = nullptr);
+    ~QTimer();
+  
+    void setInterval(int msec);
+
+*public slots:
+    void start();
+    void stop();
+
+*signals:
+    void timeout();
+};
+```
+]
+
+
+---
+
+.left-column[
+  ## Signals & Slots
+]
+.right-column[
+```c++
+int main(int argc, char** argv)
+{
+    QApplication app(argc, argv);
+
+    QMainWindow w;
+	w.show();
+
+    QPushButton* button 
+		= new QPushButton("Quit", &w);
+
+    QTimer* timer = new QTimer(&w);
+    timer->setInterval(1000);
+
+*   QObject::connect(button, 
+					&QPushButton::clicked, 
+					timer, 
+					&QTimer::start);
+
+*   QObject::connect(timer, &QTimer::timeout, []()
+    {   
+        qApp->quit();
+    }); 
+
+*   return app.exec();
+}
+```
+]
+
+
+---
+
+
+.left-column[
+  ## Signals & Slots
+]
+.right-column[
+- Used for all GUI events, but not only!
+
+- Better than direct callbacks in some cases
+
+   - Types don't know about each other (lose coupling)
+
+   - Solves lifetime issue on receiver end
+
+   - Event loop integration
+
+   - Multi threading for free
+]
+
+
+
+---
+
+
+.left-column[
+  ## Signals & Slots
+]
+.right-column[
+- Signals/Slots are generated by the MOC 
+
+- Running MOC can be enabled automatically via CMake
+
+```cmake
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+
+find_package(Qt5Widgets REQUIRED)
+add_executable(app main.cc timer.cc)
+
+qt5_use_modules(app Widgets)
+```
+
+]
+
+---
+
+class: center, middle, inverse
+# Qt Containers
+
+---
+
+.left-column[
+  ## Qt Containers
+]
+.right-column[
+- Different philosophy than STL
+
+	*Syntax matters, it isn't just sugar*
+]
+
+---
+
+
+.left-column[
+  ## Qt Containers
+]
+.right-column[
+- Different philosophy than STL
+
+	*Syntax matters, it isn't just sugar*
+
+```c++
+QList<QString> list;
+*list << "foo" << "bar" << "bar";
+
+if (list.contains("foo"))
+    qDebug() << list;
+
+*QSet<QString> set = list.toSet();
+
+qDebug() << set;
+```
+]
+
+---
+
+.left-column[
+  ## Qt Containers
+]
+.right-column[
+- Different philosophy than STL
+
+    *Syntax matters, it isn't just sugar*
+
+```c++
+QList<QString> list;
+*list << "foo" << "bar" << "bar";
+
+if (list.contains("foo"))
+    qDebug() << list; 
+
+*QSet<QString> set = list.toSet();
+
+qDebug() << set; 
+```
+
+Output:
+```
+("foo", "bar", "bar")
+QSet("foo", "bar")
+```
+]
+
+---
+
+.left-column[
+  ## Qt Containers
+]
+.right-column[
+STL containers and their equivalent:
+
+- `std::vector<T>` &rarr; `QVector<T>`
+
+- `std::map<K, V>` &rarr; `QMap<K, V>`
+
+- `std::unordered_map<K, V>` &rarr; `QHash<K, V>`
+
+- `std::list<T>` &rarr; `QLinkedList<T>`
+
+- `std::set<T>` &rarr; N/A
+
+]
+
+---
+
+.left-column[
+  ## Qt Containers
+]
+.right-column[
+- `QList<T>`: an interesting beast
+
+   - O(1) index lookup, amortized O(1) prepending and appending, O(n) insertion
+
+   - Preallocates memory before/after its internal array
+
+   - Stores `T` if `sizeof(T)` &le; `sizeof(void*)`, otherwise store `T*` 
+
+     (avoid using it in this case, just use `QVector`)
+]
+
+---
+
+.left-column[
+  ## Qt Containers
+]
+.right-column[
+- `std::vector<std::string>` &rarr; `QStringList` 
+
+    - Inherits from `QList<QString>`
+
+    - Adds `join`, `split`, and all methods you always wanted to use on strings list 
+
+- `std::string` &rarr; `QString` (Unicode) 
+
+- `std::string_view` &rarr; `QStringView` (5.10)
+
+- `const char*` &rarr; `QByteArray`
+]
+
+
+---
+
+class: center, middle, inverse
+# Implicit sharing
+
+---
+
+.left-column[
+  ## Implicit sharing
+]
+.right-column[
+```c++
+QStringList foo;
+foo << "a" << "b" << "c";
+
+QStringList bar = foo;
+```
+]
+
+---
+
+.left-column[
+  ## Implicit sharing
+]
+.right-column[
+```c++
+QStringList foo;
+foo << "a" << "b" << "c";
+
+QStringList bar = foo;
+```
+
+
+- `foo` and `bar` points to the same internal object
+
+- Copying any Qt object is very cheap
+
+    - *Shallow copy*: atomic int operation and pointer copy
+
+- Modifying the object when reference counter is not one causes a *detach*
+
+    - *Deep copy*: as expensive as the copy of an STL container
+
+- Also called Copy On Write (COW)
+]
+
+---
+
+
+class: center, middle, inverse
+# QVariant
+
+---
+
+.left-column[
+  ## QVariant
+]
+.right-column[
+- *Acts like a union for the most common Qt data types*
+
+- Can hold a value from any type, like `std::any`
+
+- Offers an `std::variant` interface for most Qt types
+]
+
+---
+
+.left-column[
+  ## QVariant
+]
+.right-column[
+- *Acts like a union for the most common Qt data types*
+
+- Can hold a value from any type, like `std::any`
+
+- Offers an `std::variant` interface for most Qt types
+
+```c++
+QVariant v = 123;
+int i = v.toInt();
+
+v = "foo";
+
+qDebug() << v.typeName() << "=" << v.toString();
+```
+]
+
+---
+
+.left-column[
+  ## QVariant
+]
+.right-column[
+- *Acts like a union for the most common Qt data types*
+
+- Can hold a value from any type, like `std::any`
+
+- Offers an `std::variant` interface for most Qt types
+
+```c++
+QVariant v = 123;
+int i = v.toInt();
+
+v = "foo";
+
+qDebug() << v.typeName() << "=" << v.toString();
+```
+
+Output:
+```
+QString = "foo"
+```
+]
+
+---
+
+.left-column[
+  ## QVariant
+]
+.right-column[
+- `QVariant` can be used with custom types
+
+```c++
+struct A { int i; };
+*Q_DECLARE_METATYPE(A);
+
+...
+
+v = QVariant::fromValue(A{1234});
+
+*if (v.canConvert<A>())
+{
+  qDebug() << v.typeName() << "=" << v.value<A>();
+}
+
+qDebug() << v;
+```
+]
+
+---
+
+.left-column[
+  ## QVariant
+]
+.right-column[
+- `QVariant` can be used with custom types
+
+```c++
+struct A { int i; };
+*Q_DECLARE_METATYPE(A);
+
+...
+
+v = QVariant::fromValue(A{1234});
+
+*if (v.canConvert<A>())
+{
+  qDebug() << v.typeName() << "=" << v.value<A>();
+}
+
+qDebug() << v;
+```
+
+Output:
+```c++
+A = 1234
+QVariant(A, 1234)
+```
+]
+
+---
+
+.left-column[
+  ## QVariant
+]
+.right-column[
+- `QVariantMap`: *a powerful, versatile type* 
+
+    Just a typedef for `QMap<QString, QVariant>`
+
+```c++
+QVariantMap m;
+m["id"] = 2;
+m["name"] = "foo";
+m["value"] = QStringList() << "bar" << "baz";
+
+qDebug() << m;
+
+for (const QString& str : m["value"].toStringList())
+    qDebug() << str;
+}
+```
+]
+
+---
+
+.left-column[
+  ## QVariant
+]
+.right-column[
+- `QVariantMap`: *a powerful, versatile type* 
+
+    Just a typedef for `QMap<QString, QVariant>`
+
+```c++
+QVariantMap m;
+m["id"] = 2;
+m["name"] = "foo";
+m["value"] = QStringList() << "bar" << "baz";
+
+qDebug() << m;
+
+for (const QString& str : m["value"].toStringList())
+    qDebug() << str;
+```
+
+Output
+```c++
+QMap(("id", QVariant(int, 2)) ("name", QVariant(QString, "foo")) ("value", QVariant(QStringList, ("bar", "baz"))))
+"bar"
+"baz"
+```
+]
+
+---
+
+class: center, middle, inverse
+# Meta Object
+
+---
+
+.left-column[
+  ## Meta Object
+]
+.right-column[
+- Like C++ RTTI, but better (+ reflection)
+
+- Every `QObject` has an associated meta object
+
+- `Q_OBJECT` offers introspection features
+
+    - `className()`
+
+	- `inherits()`
+
+	- `classInfo()`
+
+	- ...
+]
+
+---
+
+.left-column[
+  ## Meta Object
+]
+.right-column[
+- MOC (Meta Object Compiler) parses header and generates code
+
+- Classic c++ build: class.h + class.cc &rarr; class.o &rarr; ELF
+
+- Qt build: class.h &rarr; moc_class.cc &rarr; moc_class.o + class.o &rarr; ELF
+
+- MOC parses the header file, generates stubs for signals and slots and meta info
+
+- A signal is just a function! cf `qobjectdefs.h`:
+
+```c++
+#define signals public
+#define slots /* nothing */
+#define emit /* nothing */
+```
+] 
+
+---
+
+class: center, middle, inverse
+# Questions?
+
+---
+
+class: center, middle, inverse
+# Thank you!
+Code examples can be found on my [GitHub](https://github.com/david-grs/qt_intro)
+
     </textarea>
-    <script src="https://remarkjs.com/downloads/remark-latest.min.js">
-    </script>
+    <script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+    <script src="remark-latest.min.js"></script>
+
     <script>
-      var slideshow = remark.create();
+      var hljs = remark.highlighter.engine;
     </script>
+    <script src="remark.language.js"></script>
+    <script>
+      var slideshow = remark.create({
+          highlightStyle: 'monokai',
+          highlightLanguage: 'remark',
+          highlightLines: true
+        }) ;
+    </script>
+
   </body>
 </html>
