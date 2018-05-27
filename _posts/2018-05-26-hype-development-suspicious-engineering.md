@@ -12,27 +12,30 @@ In the [Hello World extension example](https://code.visualstudio.com/docs/extens
 through a Node.js generator:
 
 >
-> We have written a Yeoman generator to help get you started.
+> We have written a Yeoman generator to help get you started. Install Yeoman and the Yeoman VS Code Extension generator and scaffold a new extension:<br />
+> 
 > `npm install -g yo generator-code`
+>
 > `yo code`
 >
 
 The thing is, running this command took almost as long as the installation of my entire Linux distribution.
 
-For this small code generator, I had to install **1066** dependencies. So what kind of dependencies are we having here? Let's have a look. Here are a few of them:
+For this small code generator, I had to install not more than **1066** dependencies. So what kind of dependencies are we having here? Let's have a look. Here are a few of them:
 
-  * *isobject*, six times
-  * *kindof*, twenty two times
-  * *is-obj*, once
-  * *unique-string*, once
-  * *path-exists*, four times
-  * *is-number*, four times
-  * *isarray*, four times
-  * *number-is-nan*, once
+  * *isobject* &mdash; 6 times
+  * *kind-of* &mdash; 22 times
+  * *is-obj* &mdash; once
+  * *unique-string* &mdash; once
+  * *path-exists* &mdash; 4 times
+  * *is-number* &mdash; 4 times
+  * *isarray* &mdash; 4 times
+  * *number-is-nan* &mdash; once
 
 Curious about the code behind those, I glanced a their github. This is `path-exists`:
+{% highlight js %}
+const fs = require('fs');
 
-```js
 module.exports.sync = fp => {
 	try {
 		fs.accessSync(fp);
@@ -41,25 +44,30 @@ module.exports.sync = fp => {
 		return false;
 	}
 };
-```
-<br />
+{% endhighlight %}
 
-So this module is really only converting an exception to a boolean. Let's look at this is `number-is-nan`:
-```js
+So this module is really just turning an exception into a boolean. "Cool"...
+
+Let's look at this is `number-is-nan`:
+{% highlight js %}
 module.exports = function (x) {
 	return x !== x;
 };
-```
-<br />
+{% endhighlight %}
 
-Alright, I guess this implementation "makes sense"... this is the `unique-string` module:
-```js
+I guess this implementation "makes sense"... 
+
+Now, this is the `unique-string` module:
+{% highlight js %}
+const cryptoRandomString = require('crypto-random-string');
+
 module.exports = () => cryptoRandomString(32);
-```
-<br />
+{% endhighlight %}
 
-... its dependency `crypto-random-string`:
-```js
+... and its dependency `crypto-random-string`:
+{% highlight js %}
+const crypto = require('crypto');
+
 module.exports = len => {
 	if (!Number.isFinite(len)) {
 		throw new TypeError('Expected a finite number');
@@ -67,45 +75,52 @@ module.exports = len => {
 
 	return crypto.randomBytes(Math.ceil(len / 2)).toString('hex').slice(0, len);
 };
-```
-<br />
+{% endhighlight %}
 
-`unique-string` is just a function call to `cryptoRandomString(32)`, and ther three out of four lines code check that the argument is a finite number &mdash;
-slightly surprised the developer didn't use the module `is-finite` here by the way!
+So `unique-string` is really just forwarding any function call to `cryptoRandomString(32)`, and three out of four lines of this separate module check that 
+the argument is a finite number &mdash; I am by the way slightly surprised the developer didn't use the module `is-finite`...!
 <br />
 
 
 Suspicious engineering
 ----------------------
-Is this really needed? What does it bring? Why would I add to my code an additional dependency, which means downloading an external code, import it, and call its 
-only one-liner just to check if a number is `NaN`, when I call myself use `!==`, or the ECMAScript 2016 function isNaN if I know my variable is a number?
+Is this really needed? What does it bring? Why would I add to my project external dependencies for such tiny features? 
 
-Same question this `path-exists`. Same about this odd `crypto-random-string` that returns an "MD5"-style string... 
+Why would I add a dependency such as `number-is-nan` to my code &mdash; which means downloading the external module, importing it from my code, and calling its 
+only one-liner function &mdash; just to check if a number is `NaN`, when I can simply use `!==`, or call the ECMAScript 2015 function isNaN (if I know that my variable is a number)?
 
-Adding a dependency to a codebase is not free. There should be a strong reason for doing so. For example, I see some good reasons to have one main core library 
+Same question about `path-exists`. Same about about `crypto-random-string`, or the others.
+
+<p>&nbsp;</p>
+
+Adding a dependency to a codebase is not free. There should be a strong reason to do so. For example, I see some good reasons to have one main core library 
 around type information. Such library would then group many of the modules like `is-array`, `is-buffer`, `kind-of` and so on, but in a *consistent* way. These modules
 depend anyway from each other, so why not group them?
 
+<p>&nbsp;</p>
+
 On the top of that, having hundreds of small independent modules can only bring confusion: what is the difference between the packages `is-array`, `isarray`, 
-`is-arrayish`, `is-array-like`? I will eventually read their implementation, which slightly defeats the purpose of using a library.
+`is-arrayish`, `is-array-like`? To know the difference, you will eventually need to read their implementation, which can change along the versions. 
 
-Anyway, I am clearly not saying that something is wrong in `Node` or `npm`, but it seems that the direction some developers took is slightly extreme, and questionable. 
+<p>&nbsp;</p>
 
-And of course, eventually, after some long minutes, the installation of my Visual Studio Code extension generator failed in the middle of the installation of the dependencies.
+<p>&nbsp;</p>
+
+Anyway, I am clearly not saying that something is wrong in `Node` or `npm`, but it seems that the direction some developers took is extreme and questionable, and my problem
+is that instead of ignoring or questioning such choices, part of the community or other developers &mdash; in this case the Microsoft Visual Studio Code team &mdash; blindly 
+follow this trend that doesn't look good. 
 
 
-```
+And by the way
+--------------
+Eventually, after some long minutes, the installation of my Visual Studio Code extension generator failed in the middle of the installation of the dependencies! I guess this
+was the end of my adventure here.
+
+As promised, here is the list of dependencies...:
+
+
+{% highlight bash %}
 # npm install --dry-run -g yo generator-code
-
-▄ ╢░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░╟
-loadDep:inquirer → resolv ▄ ╢██████████████████████████████████████████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░╟
-loadDep:yeoman-environmen ▀ ╢██████████████████████████████████████████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░╟
-loadDep:micromatch → requ ▌ ╢██████████████████████████████████████████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░╟
-loadDep:micromatch → 304  ▌ ╢██████████████████████████████████████████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░╟
-loadDep:urix → request    ▀ ╢██████████████████████████████████████████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░╟
-loadDep:yosay → get       ▀ ╢██████████████████████████████████████████████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░╟
-loadDep:foreachasync → re ▐ ╢████████████████████████████████████████████████████████████████████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░╟
-loadDep:debug → mapToRegi ▄ ╢████████████████████████████████████████████████████████████████████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░╟
 /usr/local/lib
 ├─┬ generator-code@1.1.31 
 │ ├── assert-plus@1.0.0 
@@ -1173,4 +1188,5 @@ loadDep:debug → mapToRegi ▄ ╢███████████████
     └─┬ wrap-ansi@2.1.0 
       └─┬ string-width@1.0.2 
         └── is-fullwidth-code-point@1.0.0 
-```
+{% endhighlight %}
+
