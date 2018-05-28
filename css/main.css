@@ -595,7 +595,7 @@ body {
     font-size: 22px;
     line-height: 1.5em;
     margin: 0;
-    padding-bottom: 30px;
+    padding-bottom: 5px;
     color: #333;
     -webkit-hyphens: auto;
     -moz-hyphens: auto;
@@ -649,7 +649,7 @@ body {
     font-size: 23px;
     line-height: 1.5em;
     margin-left: 30px;
-    margin-bottom: 12px;
+    margin-bottom: 0px;
     padding-top: 2px; }
     .post .post-content li p {
       padding: 0 0 1.618rem; }
