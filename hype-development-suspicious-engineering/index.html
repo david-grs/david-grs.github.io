@@ -90,7 +90,7 @@
           <p>After a few years of loyalty to QtCreator as C++ IDE, I decided to give a try to <a href="https://code.visualstudio.com/">Visual Studio Code</a>. Very positively surprised
 by its simplicity of usage, its built-in features and the quality of extensions, I thought about going one step further and write an extension.</p>
 
-<p>In the <a href="https://code.visualstudio.com/docs/extensions/example-hello-world">Hello World extension example</a>, it is adviced to generate the extension skeleton
+<p>In the <a href="https://code.visualstudio.com/docs/extensions/example-hello-world">Hello World extension example</a>, it is advised to generate the extension skeleton
 through a Node.js generator:</p>
 
 <blockquote>
@@ -105,7 +105,7 @@ through a Node.js generator:</p>
 
 <p>The thing is, running this command took almost as long as the installation of my entire Linux distribution.</p>
 
-<p>For this small code generator, I had to install not more than <strong>1066</strong> dependencies. So what kind of dependencies are we having here? Let’s have a look. Here are a few of them:</p>
+<p>For this small code generator, I had to install no less than <strong>1066</strong> dependencies. So what kind of dependencies are we having here? Let’s have a look. Here are a few of them:</p>
 
 <ul>
   <li><em>isobject</em> — 6 times</li>
@@ -118,7 +118,7 @@ through a Node.js generator:</p>
   <li><em>number-is-nan</em> — once</li>
 </ul>
 
-<p>Curious about the code behind those, I glanced a their github. This is <code>path-exists</code>:</p>
+<p>Curious about the code behind those, I glanced at their github. This is <code>path-exists</code>:</p>
 
 <div class="highlight"><pre><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="nx">fs</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;fs&#39;</span><span class="p">);</span>
 
@@ -194,13 +194,13 @@ library — who? how? —, the quality of its implementation, the existence of d
 
 <p>And trust is one of the key among all these questions. If you trust your library maintainers, if they are professional developers that will push back for invasive features, 
 review before merging patches, fight before breaking your API, quickly fix bugs, etc — if they do all that, then it will be great, and you will be happy. 
-If not… then you had better keep the code on your side.</p>
+If not… then you had better kept the code on your side.</p>
 
 <p>&nbsp;</p>
 
-<p>I am not saying the modules I mentionned above aren’t great. Their implementation has nothing spectacular, but seems reasonable. <strong>I question the engineering level 
+<p>I am not saying the modules I mentionned above aren’t great. Their implementation has nothing spectacular, but seems reasonable. <strong>I question the engineering decision 
 of developers that add dependencies to their systems for questionable features</strong>. Nothing is wrong with <code>Node</code> or <code>npm</code> either. It just seems that the direction 
-some <code>Node</code> developers took is arguable, and my problem is that <strong>instead of ignoring or questioning such choices, some developers — in this case the Microsoft 
+some <code>Node</code> developers took is debatable, and my problem is that <strong>instead of ignoring or questioning such choices, some developers — in this case the Microsoft 
 Visual Studio Code team — blindly follow the dance</strong>. I don’t see this as a tangible way to develop softwares. If the very young Visual Studio Code generator 
 already pulls a thousands of these modules, what if we continue to build on the top of it?</p>
 
@@ -213,7 +213,7 @@ go into these small modules like <code>is-array</code>, <code>is-buffer</code>, 
 <p>Eventually, after some long minutes, the installation of my Visual Studio Code extension generator failed in the middle of the installation of the dependencies! I guess this
 was the end of my adventure here.</p>
 
-<p>As promised, here is the list of dependencies…:</p>
+<p>As a parting gift, here is the list of dependencies…:</p>
 
 <div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c"># npm install --dry-run -g yo generator-code</span>
 /usr/local/lib
