@@ -8,7 +8,7 @@ date:   2018-05-26 17:21
 After a few years of loyalty to QtCreator as C++ IDE, I decided to give a try to [Visual Studio Code](https://code.visualstudio.com/). Very positively surprised
 by its simplicity of usage, its built-in features and the quality of extensions, I thought about going one step further and write an extension.
 
-In the [Hello World extension example](https://code.visualstudio.com/docs/extensions/example-hello-world), it is adviced to generate the extension skeleton
+In the [Hello World extension example](https://code.visualstudio.com/docs/extensions/example-hello-world), it is advised to generate the extension skeleton
 through a Node.js generator:
 
 >
@@ -21,7 +21,7 @@ through a Node.js generator:
 
 The thing is, running this command took almost as long as the installation of my entire Linux distribution.
 
-For this small code generator, I had to install not more than **1066** dependencies. So what kind of dependencies are we having here? Let's have a look. Here are a few of them:
+For this small code generator, I had to install no less than **1066** dependencies. So what kind of dependencies are we having here? Let's have a look. Here are a few of them:
 
   * *isobject* &mdash; 6 times
   * *kind-of* &mdash; 22 times
@@ -32,7 +32,7 @@ For this small code generator, I had to install not more than **1066** dependenc
   * *isarray* &mdash; 4 times
   * *number-is-nan* &mdash; once
 
-Curious about the code behind those, I glanced a their github. This is `path-exists`:
+Curious about the code behind those, I glanced at their github. This is `path-exists`:
 {% highlight js %}
 const fs = require('fs');
 
@@ -116,13 +116,13 @@ library &mdash; who? how? &mdash;, the quality of its implementation, the existe
 
 And trust is one of the key among all these questions. If you trust your library maintainers, if they are professional developers that will push back for invasive features, 
 review before merging patches, fight before breaking your API, quickly fix bugs, etc &mdash; if they do all that, then it will be great, and you will be happy. 
-If not... then you had better keep the code on your side.
+If not... then you had better kept the code on your side.
 
 <p>&nbsp;</p>
 
-I am not saying the modules I mentionned above aren't great. Their implementation has nothing spectacular, but seems reasonable. **I question the engineering level 
+I am not saying the modules I mentionned above aren't great. Their implementation has nothing spectacular, but seems reasonable. **I question the engineering decision 
 of developers that add dependencies to their systems for questionable features**. Nothing is wrong with `Node` or `npm` either. It just seems that the direction 
-some `Node` developers took is arguable, and my problem is that **instead of ignoring or questioning such choices, some developers &mdash; in this case the Microsoft 
+some `Node` developers took is debatable, and my problem is that **instead of ignoring or questioning such choices, some developers &mdash; in this case the Microsoft 
 Visual Studio Code team &mdash; blindly follow the dance**. I don't see this as a tangible way to develop softwares. If the very young Visual Studio Code generator 
 already pulls a thousands of these modules, what if we continue to build on the top of it?
 
@@ -139,7 +139,7 @@ And by the way
 Eventually, after some long minutes, the installation of my Visual Studio Code extension generator failed in the middle of the installation of the dependencies! I guess this
 was the end of my adventure here.
 
-As promised, here is the list of dependencies...:
+As a parting gift, here is the list of dependencies...:
 
 
 {% highlight bash %}
