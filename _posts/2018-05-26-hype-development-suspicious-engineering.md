@@ -46,7 +46,7 @@ module.exports.sync = fp => {
 };
 {% endhighlight %}
 
-So this module is really just turning an exception into a boolean. "Cool"...
+So this module is really just turning an exception into a boolean. 
 
 Let's look at this is `number-is-nan`:
 {% highlight js %}
@@ -54,8 +54,6 @@ module.exports = function (x) {
 	return x !== x;
 };
 {% endhighlight %}
-
-I guess this implementation "makes sense"... 
 
 Now, this is the `unique-string` module:
 {% highlight js %}
@@ -79,36 +77,61 @@ module.exports = len => {
 
 So `unique-string` is really just forwarding any function call to `cryptoRandomString(32)`, and three out of four lines of this separate module check that 
 the argument is a finite number &mdash; I am by the way slightly surprised the developer didn't use the module `is-finite`...!
+
+[Among the most famous one-liners](//www.reddit.com/r/programming/comments/4brd4f/isarray_1_line_npm_package_with_18m_downloads_a/), I can't get along without presenting `isarray`:
+{% highlight js %}
+var isArray = Array.isArray || function (xs) {
+    return Object.prototype.toString.call(xs) === '[object Array]';
+};
+{% endhighlight %}
+
+... and last, but not least, the `lowercase-keys` module:
+{% highlight js %}
+module.exports = object => {
+	const ret = {};
+	for (const [key, value] of Object.entries(object)) {
+		ret[key.toLowerCase()] = value;
+	}
+	return ret;
+};
+{% endhighlight %}
+
+Why would you need that? If you don't know, me neither.
 <br />
 
 
 Suspicious engineering
 ----------------------
-Is this really needed? What does it bring? Why would I add to my project external dependencies for such tiny features? 
-
-Why would I add a dependency such as `number-is-nan` to my code &mdash; which means downloading the external module, importing it from my code, and calling its 
-only one-liner function &mdash; just to check if a number is `NaN`, when I can simply use `!==`, or call the ECMAScript 2015 function isNaN (if I know that my variable is a number)?
-
-Same question about `path-exists`. Same about about `crypto-random-string`, or the others.
+Is this really needed? What does it bring? Why would I add to my project external dependencies for such tiny features? Why would I make my code depend on an external library 
+such as `number-is-nan` &mdash; which means downloading the external module, importing it from my code, and calling its only one-liner function &mdash; just to check if 
+a number is `NaN`, when I can simply use `!==`, or call the ECMAScript 2015 function `isNaN` (if I know that my variable is a number)? Same question about `path-exists`. 
+Same question about `isarray` and the others.
 
 <p>&nbsp;</p>
 
-Adding a dependency to a codebase is not free. There should be a strong reason to do so. For example, I see some good reasons to have one main core library 
-around type information. Such library would then group many of the modules like `is-array`, `is-buffer`, `kind-of` and so on, but in a *consistent* way. These modules
-depend anyway from each other, so why not group them?
+**Adding a dependency to a codebase is not free**. There should be a strong reason to do so. Adding a dependency raises many questions: about the maintenance of the 
+library &mdash; who? how? &mdash;, the quality of its implementation, the existence of documentation, its versioning, the clarity of release notes, and so on. 
 
 <p>&nbsp;</p>
 
-On the top of that, having hundreds of small independent modules can only bring confusion: what is the difference between the packages `is-array`, `isarray`, 
-`is-arrayish`, `is-array-like`? To know the difference, you will eventually need to read their implementation, which can change along the versions. 
+And trust is one of the key among all these questions. If you trust your library maintainers, if they are professional developers that will push back for invasive features, 
+review before merging patches, fight before breaking your API, quickly fix bugs, etc &mdash; if they do all that, then it will be great, and you will be happy. 
+If not... then you had better keep the code on your side.
 
 <p>&nbsp;</p>
 
+I am not saying the modules I mentionned above aren't great. Their implementation has nothing spectacular, but seems reasonable. **I question the engineering level 
+of developers that add dependencies to their systems for questionable features**. Nothing is wrong with `Node` or `npm` either. It just seems that the direction 
+some `Node` developers took is arguable, and my problem is that **instead of ignoring or questioning such choices, some developers &mdash; in this case the Microsoft 
+Visual Studio Code team &mdash; blindly follow the dance**. I don't see this as a tangible way to develop softwares. If the very young Visual Studio Code generator 
+already pulls a thousands of these modules, what if we continue to build on the top of it?
+
 <p>&nbsp;</p>
 
-Anyway, I am clearly not saying that something is wrong in `Node` or `npm`, but it seems that the direction some developers took is extreme and questionable, and my problem
-is that instead of ignoring or questioning such choices, part of the community or other developers &mdash; in this case the Microsoft Visual Studio Code team &mdash; blindly 
-follow this trend that doesn't look good. 
+To be a bit more constructive: why not simply building bigger libraries? For example, why not a core library around type information, as it seems that many dependencies
+go into these small modules like `is-array`, `is-buffer`, `kind-of`, etc? The upside would be to get an API rather consistent, maybe more than one maintainer... 
+
+
 
 
 And by the way
