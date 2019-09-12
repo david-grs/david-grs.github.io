@@ -15,6 +15,7 @@
         font-weight: 400;
         margin-bottom: 0;
       }
+      .remark-slide-content  { font-size: 1.2em; }
       .remark-slide-content h1 { font-size: 3em; }
       .remark-slide-content h2 { font-size: 2em; }
       .remark-slide-content h3 { font-size: 1.6em; }
@@ -33,7 +34,7 @@
         background: #e7e8e2;
         border-radius: 5px;
       }
-      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono'; font-size: 1.1em; }
+      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono'; }
       .remark-code-line-highlighted     { background-color: #373832; }
       .pull-left {
         float: left;
@@ -120,139 +121,172 @@
 class: center, middle, inverse
 
 # C++ Engineering 101 - Session 0
-[David Gross](https://github.com/david-grs) &mdash; 20/11/2018
+[David Gross](https://github.com/david-grs) &mdash; 12/09/2019
 
 ---
+class: center, middle, inverse
+# Why C++?
+---
+# Why C++?
 
-.left-column[
-  ## Agenda
-]
+- Abstraction, expressiveness
+---
+# Why C++?
 
-.right-column[
-Agenda
+- Abstraction, expressiveness
 
-- What is the course about?
+- Safety
+---
+# Why C++?
 
-- About me
+- Abstraction, expressiveness
 
-- The essence of C++
+- Safety
 
-- Our first code
-]
+- Performance
 
 ---
+# Why C++?
 
+- Abstraction, expressiveness
+
+- Safety
+
+- Performance
+
+```c++
+#include <numeric>
+
+template <class Container>
+Volume GetTotalVolume(const Container& c)
+{
+    return std::accumulate(c.cbegin(), c.cend(), 0_v, 
+      [](Volume v, const auto& l) { return v + l.GetVolume(); });
+}
+```
+---
+# Why C++?
+
+- Abstraction, expressiveness
+
+- Safety
+
+- Performance
+
+```c++
+#include <numeric>
+
+template <class Container>
+Volume GetTotalVolume(const Container& c)
+{
+    return std::accumulate(c.cbegin(), c.cend(), 0_v, 
+      [](Volume v, const auto& l) { return v + l.GetVolume(); });
+}
+```
+
+```x86asm
+GetDepthVolume(const std::array<Level, 3ul>&):
+        mov     rax, QWORD PTR [rdi+8]  
+        add     rax, QWORD PTR [rdi]
+        add     rax, QWORD PTR [rdi+16]
+        ret
+```
+---
 class: center, middle, inverse
 # What is the course about?
-
 ---
+# What is the course about?
 
-.left-column[
-  ## What is the course about?
-]
-.right-column[
 - ... *not* just about learning the C++ language
-]
-
 ---
+# What is the course about?
 
-.left-column[
-  ## What is the course about?
-]
-.right-column[
 - ... *not* just about learning the C++ language
 
 - Why not?
-]
-
 ---
+# What is the course about?
 
-.left-column[
-  ## What is the course about?
-]
-.right-column[
+- ... *not* just about learning the C++ language
+
+- Why not?
+
 - C++ from the start has been driven by real problems
 
-   - We are software engineers, not computer scientists
-]
-
+  - We are software engineers, not computer scientists
 ---
+# What is the course about?
 
-.left-column[
-  ## What is the course about?
-]
-.right-column[
+- ... *not* just about learning the C++ language
+
+- Why not?
+
 - C++ from the start has been driven by real problems
 
-   - We are software engineers, not computer scientists
+  - We are software engineers, not computer scientists
 
 - C++ is by nature complicated, due to its underlying goal
 
-   - Control over hardware, while still having an abstraction layer
-]
+  - Control over hardware...
+  
+  - ... while still having an abstraction layer
 
 ---
 
-.left-column[
-  ## What is the course about?
-]
-.right-column[
+# What is the course about?
+
+- What is a "good C++ developer"? 
+   
+---
+
+# What is the course about?
+
+- What is a "good C++ developer"? 
+
+   - Knowing the language, libraries
+
+---
+# What is the course about?
+
 - What is a "good C++ developer"? 
 
    - Knowing the language, libraries
    
-]
+   - Knowing what is happening under the hood: you have to understand how a computer works at a low level &mdash; "reading the Matrix"
 
 ---
-.left-column[
-  ## What is the course about?
-]
-.right-column[
+
+# What is the course about?
+
 - What is a "good C++ developer"? 
 
    - Knowing the language, libraries
    
-   - Knowing what is happening under the hood: you have to understand how a computer works at a low level
-
-]
-
----
-.left-column[
-  ## What is the course about?
-]
-.right-column[
-- What is a "good C++ developer"? 
-
-   - Knowing the language, libraries
-   
-   - Knowing what is happening under the hood: you have to understand how a computer works at a low level
+   - Knowing what is happening under the hood: you have to understand how a computer works at a low level &mdash; "reading the Matrix"
 
    - Being a software engineering: finding the balance between simplicity, flexibility and performance
-]
 
+   
 ---
+# What is the course about?
 
-.left-column[
-  ## What is the course about?
-]
-.right-column[
+- Our goal: to learn C++ as engineering tool
+---
+# What is the course about?
+
 - Our goal: to learn C++ as engineering tool.red[*]
 
 
 .footnote[.red[*] much more exciting than it seems!]
-]
-
 ---
 
-.left-column[
-  ## What is the course about?
-]
-.right-column[
-- Our goal: to learn C++ as engineering tool.red[*]
+# What is the course about?
+
+- Our goal: to learn C++ as engineering tool
 
 - C++ is an expressive, powerful language
 
-    - Hardware: CPU, memory, ...
+    - Hardware: CPU, memory, Uncore, devices, ...
   
     - Machine code
 
@@ -262,58 +296,30 @@ class: center, middle, inverse
 
     - C++ STL
 
-    - Core C++ libraries: Boost, QtCore
+    - Core C++ libraries: STL, Boost, QtCore
 
     - Business level libraries: Ogre, Eigen, SFML, RocksDB, ...
-
-.footnote[.red[*] much more exciting than it seems!]
-]
-
----
-class: center, middle, inverse
-# About me
----
-
-.left-column[
-  ## About me 
-]
-.right-column[
-- I believe (hope!) I am a good engineer
-
-- I am not a C++ Guru!
-]
-
 
 ---
 class: center, middle, inverse
 # The essence of C++
 ---
 
-.left-column[
-  ## The essence of C++
-]
-.right-column[
+# The essence of C++
+  
 - 1979, a Bell Labs project and Stroustrup
-]
 
 ---
 
-.left-column[
-  ## The essence of C++
-]
-.right-column[
+# The essence of C++
 - 1979, a Bell Labs project and Stroustrup
 
 - C + Simula = C++
 
-]
-
 ---
 
-.left-column[
-  ## The essence of C++
-]
-.right-column[
+# The essence of C++
+
 - 1979, a Bell Labs project and Stroustrup
 
 - C + Simula = C++
@@ -322,14 +328,10 @@ class: center, middle, inverse
 
     - Direct map to hardware: instructions and fundamental data types
 
-]
 
 ---
 
-.left-column[
-  ## The essence of C++
-]
-.right-column[
+# The essence of C++
 - 1979, a Bell Labs project and Stroustrup
 
 - C + Simula = C++
@@ -340,15 +342,9 @@ class: center, middle, inverse
 
     - Zero-overhead abstraction: object oriented, generic programming
 
-
-]
-
 ---
+# Vector3
 
-.left-column[
-  ## Vector3
-]
-.right-column[
 ```c++
 class Vector3
 {
@@ -368,47 +364,33 @@ private:
     double mZ;
 };
 ```
-]
-
-
 ---
 
-.left-column[
-  ## Map to hardware
-]
-.right-column[
+# Map to hardware
+
 ```c++
 Vector3 v{1.0, 2.0, 1.5};
 Vector3& v2 = v;
 ```
-]
 
 ---
 
-.left-column[
-  ## Zero-overhead abstraction
-]
-.right-column[
+# Zero-overhead abstraction
+
 - What you don't use, you don't pay for
-]
 
 ---
 
-.left-column[
-  ## Zero-overhead abstraction
-]
-.right-column[
+# Zero-overhead abstraction
+
 - What you don't use, you don't pay for
 
 - What you do use, you couldn't hand code any better
-]
 
 ---
 
-.left-column[
-  ## Zero-overhead abstraction
-]
-.right-column[
+# Zero-overhead abstraction
+
 - What you don't use, you don't pay for
 
 - What you do use, you couldn't hand code any better
@@ -416,15 +398,10 @@ Vector3& v2 = v;
 - "If you want to use inheritance, use it. If you don't need it, don't use it
 
 - "If you want to use dynamic memory, use it. If you don't need it, don't use it."
-
-]
-
 ---
 
-.left-column[
-  ## Zero-overhead abstraction
-]
-.right-column[
+# Zero-overhead abstraction
+
 ```c++
 double foo(const Vector3& vec)
 {
@@ -434,111 +411,54 @@ double foo(const Vector3& vec)
     return dot;
 }
 ```
-]
-
 
 ---
 class: center, middle, inverse
 # Our goal
 ---
 
-.left-column[
-  ## Our goal
-]
-.right-column[
-- Safety: value safety, type safety, lifetime safety, bounds safety
-]
+# Our goal
 
+- Safety: value safety, type safety, lifetime safety, bounds safety
 
 ---
-.left-column[
-  ## Our goal
-]
-.right-column[
+# Our goal
+
 - Safety: value safety, type safety, lifetime safety, bounds safety
 
-	*"In C++ it's harder to shoot yourself in the foot, but when you do, you blow off your whole leg."* 
-
-]
+- Strive for simplicity: C++17: ~1605 pages of standard
 
 ---
-.left-column[
-  ## Our goal
-]
-.right-column[
+# Our goal
+
 - Safety: value safety, type safety, lifetime safety, bounds safety
 
-	*"In C++ it's harder to shoot yourself in the foot, but when you do, you blow off your whole leg."* 
-
-- Strive for simplicity: C++14: ~1400 pages of standard
-]
-
----
-.left-column[
-  ## Our goal
-]
-.right-column[
-- Safety: value safety, type safety, lifetime safety, bounds safety
-
-	*"In C++ it's harder to shoot yourself in the foot, but when you do, you blow off your whole leg."* 
-	
-- Strive for simplicity: C++14: ~1400 pages of standard
-
-	*"Within C++, there is a much smaller and cleaner language struggling to get out.*" 
-]
-
----
-.left-column[
-  ## Our goal
-]
-.right-column[
-- Safety: value safety, type safety, lifetime safety, bounds safety
-
-	*"In C++ it's harder to shoot yourself in the foot, but when you do, you blow off your whole leg."*
-
-- Strive for simplicity: C++14: ~1400 pages of standard
-
-	*"Within C++, there is a much smaller and cleaner language struggling to get out.*" 
+- Strive for simplicity: C++17: ~1605 pages of standard
 
 - Correctness &mdash; safe and simple code helps this greatly
-]
 
 ---
-.left-column[
-  ## Our goal
-]
-.right-column[
+# Our goal
+
 - Safety: value safety, type safety, lifetime safety, bounds safety
 
-	*"In C++ it's harder to shoot yourself in the foot, but when you do, you blow off your whole leg."*
-
-- Strive for simplicity: C++14: ~1400 pages of standard
-
-	*"Within C++, there is a much smaller and cleaner language struggling to get out.*"
+- Strive for simplicity: C++17: ~1605 pages of standard
 
 - Correctness &mdash; safe and simple code helps this greatly
 
 - Performance: know your hardware
-]
 ---
-.left-column[
-  ## Our goal
-]
-.right-column[
+# Our goal
+
 - Safety: value safety, type safety, lifetime safety, bounds safety
 
-	*"In C++ it's harder to shoot yourself in the foot, but when you do, you blow off your whole leg."*
-
-- Strive for simplicity: C++14: ~1400 pages of standard
-
-	*Within C++, there is a much smaller and cleaner language struggling to get out.* B. Stroustrup
+- Strive for simplicity: C++17: ~1605 pages of standard
 
 - Correctness &mdash; safe and simple code helps this greatly
 
 - Performance: know your hardware
 
 - Beautiful code
-]
 ---
 
 class: center, middle, inverse
