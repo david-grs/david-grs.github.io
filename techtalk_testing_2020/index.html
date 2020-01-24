@@ -321,7 +321,8 @@ template: basic
 ```cpp
 TEST_F(StrategyChekOpportunity, AskOrder_NotEnoughCredit_NoOrder)
 {
-    PrepareTestCase(mVolCombo, MakeBidAsk(Offset{-0.01}, Offset{0.01}), PriceVolume{}, PriceVolume{mVolComboBidTheo - 0.01, 100});
+    PrepareTestCase(mVolCombo, MakeBidAsk(Offset{-0.01}, Offset{0.01}), PriceVolume{}, 
+					PriceVolume{mVolComboBidTheo - 0.01, 100});
     ExpectOrder(boost::none);
     CheckOpportunity(mVolCombo);
 }
@@ -333,6 +334,10 @@ template: basic
 # Unit testing &mdash; Best practices
 
   * Write fixtures and helper functions to avoid code duplication
+
+
+--- 
+template: basic
 
 ```cpp
 TEST_F(ModuleTest, InsertOrder_DummyOrder)
@@ -373,40 +378,6 @@ TEST_F(ModuleReadyTest, IOCOrder_OrderSent)
     InsertIOCOrder(10_p, 1_v, OrderSide::BUY, OrderTag, Expect::Call);
 }
 ```
-
----
-template: basic
-
-# Unit testing &mdash; Best practices
-
-  * Write fixtures and helper functions to avoid code duplication
-
-```cpp
-void InsertIOCOrder(Price price, Volume volume, OrderSide orderSide, int orderTag, Expect expect)
-{
-    OrderInsertData orderInsertData;
-    orderInsertData.mTag = orderTag;
-    orderInsertData.mIsBid = orderSide == OrderSide::BUY;
-    orderInsertData.mVolume = volume;
-    orderInsertData.mPrice = price;
-    orderInsertData.mContractId = mProductId;
-    orderInsertData.mOrderType = OrderType::IOC;
- 
-    auto checkResult = mModule->CheckAndPrepareInsertOrder(orderInsertData);
-    ASSERT_TRUE(checkResult.IsSuccess());
-    mModule->InsertOrder(orderInsertData, mOrderHandlers, checkResult.GetCustomModuleData());
- 
-    if (expect == Expect::Call)
-    {
-        EXPECT_CALL(*mMockSession, SendOrder(price, volume, orderSide)).Times(1);
-    }
-    else
-    {
-        EXPECT_CALL(*mMockSession, SendOrder(_, _, _, _, _).Times(0);
-    }
-   }
-```
-
 
 ---
 template:basic
@@ -474,7 +445,7 @@ template: basic
 
   * Manual testing
 
-## **All of them together should run within minutes**
+    * *All of them together should run within minutes*
 
 ---
 
