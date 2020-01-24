@@ -336,7 +336,7 @@ template: basic
   * Write fixtures and helper functions to avoid code duplication
 
 
---- 
+---
 template: basic
 
 ```cpp
@@ -368,14 +368,16 @@ template: basic
 ```cpp
 TEST_F(ModuleReadyTest, DummyOrder_NoOrderSent)
 {
-    static const int DummyOrderTag = 0;
-    InsertIOCOrder(10_p, 1_v, OrderSide::BUY, DummyOrderTag, Expect::None);
+    const int DummyOrderTag = 0;
+	ExpectOrder(boost::none);
+    InsertIOCOrder(10_p, 1_v, OrderSide::BUY, DummyOrderTag);
 }
 
 TEST_F(ModuleReadyTest, IOCOrder_OrderSent)
 {
     static const int OrderTag = 1;
-    InsertIOCOrder(10_p, 1_v, OrderSide::BUY, OrderTag, Expect::Call);
+	ExpectOrder(Order{10_p, 1_v, OrderSide::BUY, TimeInForce::IOC});
+    InsertIOCOrder(10_p, 1_v, OrderSide::BUY, OrderTag);
 }
 ```
 
@@ -446,6 +448,17 @@ template: basic
   * Manual testing
 
     * *All of them together should run within minutes*
+
+---
+template: basic
+
+# Testing
+
+  * AMSD Written Supervisory Procedures (WSP)
+
+  * Evidence of testing
+
+  * Algo and execution components
 
 ---
 
