@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Optiver's Engineering Practices</title>
+    <meta charset="utf-8">
+    <link href="https://fonts.googleapis.com/css?family=Raleway|Roboto+Slab|Lato|Source+Sans+Pro|Open+Sans|Oswald|Roboto|Roboto+Mono|Lato+Mono|Montserrat" rel="stylesheet">
+    <!--link href='font.css' rel='stylesheet' type='text/css'-->
+    <style>
+      body {
+        font-family: 'Source Sans Pro';
+        font-size: 100%;
+        margin: 100px;
+      }
+      a {
+        color: #96cbfe;
+        text-decoration: initial;
+      }
+      h1, h2, h3 {
+        font-family: 'Raleway';
+        font-weight: normal;
+      }
+      .smalltext {
+        font-size: 20px;
+        position: absolute;
+        bottom: 3em;
+        right: 15px;
+      }
+      .footnote {
+        position: absolute;
+        bottom: 3em;
+        right: 2em;
+      }
+      .remark-container {
+        background-color: #1C1D21;
+      }
+      .remark-slide-scaler {
+        -moz-box-shadow: 0 0 60px #000;
+        -webkit-box-shadow: 0 0 60px #000;
+        box-shadow: 0 0 60px #000;
+      }
+      .remark-slide-content {
+        background-color: #000;
+        background-size: cover;
+        background-position: center;
+        color: #f8f8f8;
+        font-size: 32px;
+        text-shadow: 0px 0px 16px #000, 0px 0px 32px #000;
+        padding: 0.5em 1em 0.5em 1em
+      }
+      .remark-slide-content h1 {
+        font-size: 65px
+      }
+      .remark-code, .remark-inline-code {
+        font-family: 'Roboto Mono', monospace;
+      }
+      .remark-code {
+        font-size: 22px;
+      }
+      .remark-code-line-highlighted {
+        background-color: #422;
+        border-left: 5px solid #F00;
+        border-right: 5px solid #F00;
+        margin: -1px -7px 0px;
+        padding: 1px 2px 0px;
+      }
+      .remark-code-span-highlighted {
+        background-color: #422;
+        border: 5px solid #F00;
+        box-shadow: 0 0 30px #F00;
+        margin: -7px;
+        padding: 2px;
+      }
+      .left-col {
+        float: left;
+        width: 49%;
+      }
+      .right-col {
+        float: right;
+        width: 49%;
+      }
+      .footer { 
+        position: absolute; 
+        bottom: -5px; 
+        left: -5px; 
+        transform: scale(.5); 
+        content: url('optiver_logo2.png'); 
+      }
+      .image-100 img {
+        width: 100%;
+      }
+      .image-90 img {
+        width: 90%;
+      }
+      .image-70 img {
+        width: 70%;
+      }
+      .image-50 img {
+        width: 50%;
+      }
+      .image-60 img {
+        width: 60%;
+      }
+    </style>
+  </head>
+  <body>
+   <textarea id="source">
+name: main-title
+layout: true
+class: center, middle, title
+
+<div class="footer"></div>
+---
+name: title
+layout: true
+class: center, middle, title
+---
+name: basic
+layout: true
+class: left, top
+---
+
+name: first-slide
+template: main-title
+
+# Optiver's Engineering Practices
+
+.footnote[[David Gross](mailto:davidgross@optiver.com) &mdash; 24-01-2020]
+
+---
+
+
+name: agenda
+template:basic
+
+# Today's agenda
+
+  * Code reviews
+  
+  * Testing 
+  
+  * Safe, simple code
+  
+---
+
+name: why
+template: title
+
+# Why this presentation?
+
+---
+name: testing
+template: basic
+class: middle
+
+
+```cpp
+
+
+```
+
+---
+
+name: testing
+template: basic
+
+## Testing
+
+.left-col[
+```cpp 
+
+```
+]
+
+.right-col[
+```cpp
+
+```
+]
+
+---
+
+
+name: questions
+template: main-title
+
+# Thank you...
+
+# Questions?
+
+
+   </textarea>
+    <!--script src="https://remarkjs.com/downloads/remark-latest.min.js">
+    </script-->
+
+    <script src="remark.min.js">
+    </script>
+    <script>
+
+var slideshow = remark.create({
+  ratio: '16:9', // default '4:3'
+  navigation: {
+    scroll: true,
+    touch: true,
+    click: false,
+  },
+  //highlightLanguage: 'x86asm',
+  highlightLanguage: 'cpp',
+  highlightStyle: 'sunburst',
+  //highlightStyle: 'tomorrow-night-bright',
+  //highlightStyle: 'qtcreator_dark',
+  //highlightStyle: 'ir-black',
+  highlightLines: true,
+  highlightSpans: true,
+  slideNumberFormat: '%current% / %total%',
+  //sourceUrl: 'microbenchmarking_cpp_code.md',
+});
+
+    </script>
+  </body>
+</html>
