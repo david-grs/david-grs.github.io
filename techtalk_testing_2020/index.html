@@ -135,8 +135,6 @@ template: basic
   
   * Testing
   
-  * Safe, simple code
-  
 ---
 template: title
 
@@ -173,6 +171,35 @@ template: basic
 
 # Code reviews
 
+  * What to look for (as a reviewer)?
+  
+---
+template: basic
+
+# Code reviews
+
+  * What to look for (as a reviewer)?
+
+    * *Assume that the code does not work and review it as long as you didn't find why*
+  
+---
+template: basic
+
+# Code reviews
+
+  * What to look for (as a reviewer)?
+  
+    * *Assume that the code does not work and review it as long as you didn't find why*
+
+    * High-level: design, architecture, functional
+    
+    * Implementation-level: complexity, testing, correctness, naming, language, style
+
+---
+template: basic
+
+# Code reviews
+
   * Approval
   
     * What does it mean to approve a PR?
@@ -188,43 +215,252 @@ template: basic
     
     * *You share the responsibility of the code running in production*
 
+
 ---
 template: basic
 
-# Code reviews
+# Testing
 
-  * What to look for (as a reviewer)?
-  
+  * Unit testing: 1k+
+
+  * Application testing: 10-100
+
+  * Manual testing
+
+---
+template:basic 
+
+# Unit testing
+
+  * [Unit testing Algo &amp; Execution Components](http://confluence.ams.optiver.com/pages/viewpage.action?pageId=255379339)
+
+  * Applies to the entire Tech
+
+---
+template:basic 
+
+# Unit testing &mdash; Principles
+
+  * Code has to be designed to be inherently testable
+
+---
+template:basic 
+
+# Unit testing &mdash; Principles
+
+  * Code has to be designed to be inherently testable
+
+  * Test what matters
+---
+template:basic 
+
+# Unit testing &mdash; Principles
+
+  * Code has to be designed to be inherently testable
+
+  * Test what matters
+
+  * Unit tests should be designed, developed and reviewed as thoroughly as the code itself
+
 ---
 template: basic
 
-# Code reviews
+# Unit testing &mdash; Best practices
 
-  * What to look for (as a reviewer)?
-  
-    * High-level: design, architecture, functional
-    
-    * Implementation-level: complexity, testing, correctness, naming, language, style
-
-
----
-
-name: testing
-template: basic
-
-## Testing
-
-.left-col[
-```cpp 
-
-```
-]
-
-.right-col[
 ```cpp
-
+TEST_F(ModuleTest, InsertOrder_DummyOrder)
+{
+    auto instrument = FixtureInstrumentImporter::GetInstrument();
+    mModule->OnInstrumentUpserted(instrument);
+ 
+    OrderInsertData orderInsertData;
+    orderInsertData.mContractId = TEST_PRODUCT_ID;
+    orderInsertData.mTag = 0;
+ 
+    OrderHandlers orderHandlers;
+ 
+    EXPECT_CALL(*this->mMockSession, SendOrder(_, _, _, _, true)).Times(1);
+    auto result = mModule->CheckAndPrepareInsertOrder(orderInsertData);
+    EXPECT_TRUE(result.IsSuccess());
+    mModule->InsertOrder(orderInsertData, orderHandlers, result.GetCustomModuleData());
+}
 ```
-]
+
+---
+template: basic 
+# Unit testing &mdash; Best practices
+
+ * Name your test
+ 
+   * Initial state
+   * Action
+   * Expectation
+
+ * `TEST_F(ModuleTest, InsertOrder_DummyOrder)`
+
+ * `TEST_F(ModuleReady, InsertZeroTagOrder_SendDummyOrder)`
+
+---
+template: basic
+
+# Unit testing &mdash; Best practices
+
+  * AAA: Arrange, Act, Assert
+
+    * **Arrange** your test case by creating objects, setting them in a specific state
+	* **Act** on an object
+	* **Assert** on text expectations
+
+  * Every unit test should be 2 or 3 lines long
+
+---
+template: basic
+
+# Unit testing &mdash; Best practices
+
+```cpp
+TEST_F(StrategyChekOpportunity, AskOrder_NotEnoughCredit_NoOrder)
+{
+    PrepareTestCase(mVolCombo, MakeBidAsk(Offset{-0.01}, Offset{0.01}), PriceVolume{}, PriceVolume{mVolComboBidTheo - 0.01, 100});
+    ExpectOrder(boost::none);
+    CheckOpportunity(mVolCombo);
+}
+```
+
+---
+template: basic
+
+# Unit testing &mdash; Best practices
+
+  * Write fixtures and helper functions to avoid code duplication
+
+```cpp
+TEST_F(ModuleTest, InsertOrder_DummyOrder)
+{
+    auto instrument = FixtureInstrumentImporter::GetInstrument();
+    mModule->OnInstrumentUpserted(instrument);
+ 
+    OrderInsertData orderInsertData;
+    orderInsertData.mContractId = TEST_PRODUCT_ID;
+    orderInsertData.mTag = 0;
+ 
+    OrderHandlers orderHandlers;
+ 
+    EXPECT_CALL(*this->mMockSession, SendOrder(_, _, _, _, true)).Times(1);
+    auto result = mModule->CheckAndPrepareInsertOrder(orderInsertData);
+    EXPECT_TRUE(result.IsSuccess());
+    mModule->InsertOrder(orderInsertData, orderHandlers, result.GetCustomModuleData());
+}
+```
+
+---
+template: basic
+
+# Unit testing &mdash; Best practices
+
+  * Write fixtures and helper functions to avoid code duplication
+
+```cpp
+TEST_F(ModuleReadyTest, DummyOrder_NoOrderSent)
+{
+    static const int DummyOrderTag = 0;
+    InsertIOCOrder(10_p, 1_v, OrderSide::BUY, DummyOrderTag, Expect::None);
+}
+
+TEST_F(ModuleReadyTest, IOCOrder_OrderSent)
+{
+    static const int OrderTag = 1;
+    InsertIOCOrder(10_p, 1_v, OrderSide::BUY, OrderTag, Expect::Call);
+}
+```
+
+---
+template: basic
+
+# Unit testing &mdash; Best practices
+
+  * Write fixtures and helper functions to avoid code duplication
+
+```cpp
+void InsertIOCOrder(Price price, Volume volume, OrderSide orderSide, int orderTag, Expect expect)
+{
+    OrderInsertData orderInsertData;
+    orderInsertData.mTag = orderTag;
+    orderInsertData.mIsBid = orderSide == OrderSide::BUY;
+    orderInsertData.mVolume = volume;
+    orderInsertData.mPrice = price;
+    orderInsertData.mContractId = mProductId;
+    orderInsertData.mOrderType = OrderType::IOC;
+ 
+    auto checkResult = mModule->CheckAndPrepareInsertOrder(orderInsertData);
+    ASSERT_TRUE(checkResult.IsSuccess());
+    mModule->InsertOrder(orderInsertData, mOrderHandlers, checkResult.GetCustomModuleData());
+ 
+    if (expect == Expect::Call)
+    {
+        EXPECT_CALL(*mMockSession, SendOrder(price, volume, orderSide)).Times(1);
+    }
+    else
+    {
+        EXPECT_CALL(*mMockSession, SendOrder(_, _, _, _, _).Times(0);
+    }
+   }
+```
+
+
+---
+template:basic
+
+# Unit testing &mdash; Best practices
+
+  * Wrap every single public API method
+
+```cpp
+TEST_F(OneShotOrderEngineEnabledTest, Enable_FatalError)
+{
+    ExpectDisable(IsError::Yes, IsFatal::Yes);
+    mEngine.Enable(mOnState, mOnInsertOrder);
+}
+```
+---
+template:basic
+
+# Unit testing &mdash; Best practices
+
+  * Wrap every single public API method
+
+```cpp
+class OneShotOrderEngineEnabledTest : public ::testing::Test
+{
+public:
+    void Enable() { mEngine.Enable(mOnState, mOnInsertOrder); }
+};
+
+TEST_F(OneShotOrderEngineEnabledTest, Enable_FatalError)
+{
+    ExpectDisable(IsError::Yes, IsFatal::Yes);
+    Enable();
+}
+```
+---
+template: basic
+
+# Unit testing &mdash; Best practices
+
+  * More
+
+    * StrictMock 
+
+	* Sequenced calls
+
+	* Return values
+
+	* ASSERT / EXPECT
+
+	* ...
+
+  * [Unit testing Algo &amp; Execution Components](http://confluence.ams.optiver.com/pages/viewpage.action?pageId=255379339)
+
 
 ---
 
