@@ -321,7 +321,7 @@ template: basic
 ```cpp
 TEST_F(StrategyChekOpportunity, AskOrder_NotEnoughCredit_NoOrder)
 {
-    PrepareTestCase(mVolCombo, MakeBidAsk(Offset{-0.01}, Offset{0.01}), PriceVolume{}, 
+    PrepareTestCase(mVolCombo, MakeBidAsk(Offset{-0.01}, Offset{0.01}), 
 					PriceVolume{mVolComboBidTheo - 0.01, 100});
     ExpectOrder(boost::none);
     CheckOpportunity(mVolCombo);
