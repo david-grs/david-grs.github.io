@@ -20,25 +20,39 @@
 			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
 			document.getElementsByTagName( 'head' )[0].appendChild( link );
 		</script>
+<style>
+.reveal .footer {
+  position: absolute;
+  bottom: 1em;
+  left: 1em;
+  font-size: 0.5em;
+}
+</style>
 	</head>
 	<body>
+
 		<div class="reveal">
+
+  <div class='footer'>
+    Questions: https://www.sli.do/ &mdash; Code: #599 376
+  </div>
 			<div class="slides">
 
 
 <section data-background-image="pics/Amsterdam.jpg">
 	<h1>Low Latency Programming</h1>
-	<div>14/10/2020 &mdash; David Gross &mdash; <a href="mailto:davidgross@optiver.com">davidgross@optiver.com</a></div>
+	<div>30/09/2021 &mdash; David Gross &mdash; <a href="mailto:davidgross@optiver.com">davidgross@optiver.com</a></div>
 	<img src="pics/optiver_logo_white.png" style="border:none; background:none"/>
 </section>
 
 <section data-background-image="pics/Amsterdam.jpg">
 	<h3>About me</h3>
 	<ul>
-		<li>MSc Computer Science UTC (France)</li>
+		<li>MSc Computer Science (France)</li>
 		<li>15+ years of programming</li>
 		<li>10+ years of C++
-		<li>5+ years at Optiver</li>
+		<li>7 years at Optiver</li>
+		<li>C++ AutoTrading developer and Team Lead</li>
 		<li><a href="https://github.com/david-grs">https://github.com/david-grs</a></li>
 	</ul>
 	<div class="stretch">
@@ -50,9 +64,10 @@
 	<h3>About this talk</h3>
 	<ul>
 		<li>Based on a Low Latency Workshop</li>
-		<li>Process of improving latency</li>
+		<li>A simple methodology for low latency programming</li>
 		<li>Some useful tools &mdash; mostly Linux</li>
 		<li>Actual C++ code</li>
+		<li><b>Questions: https://www.sli.do/ &mdash; Code: #599 376</b></li>
 	</ul>
 </section>
 
@@ -127,6 +142,40 @@
 	<h3>CPU architecture - Intel Haswell</h3>
 	<p><img src="pics/intel_core_i7_architecture.png"/></p>
 </section>
+
+<section>
+	<h1>System tuning 101</h1>
+	<h3>RDTSC &mdash; Read Time-Stamp Counter</h3>
+	<pre><code class="cpp">
+inline uint64_t rdtsc()
+{
+    uint64_t rax, rdx;
+    asm volatile("rdtsc" : "=a"(rax), "=d"(rdx));
+    return (rdx << 32) + rax;
+}
+	</code></pre>
+</section>
+<section>
+	<h1>System tuning 101</h1>
+	<h3><img src="pics/rdtscp_bad.png"/></h3>
+</section>
+
+<section>
+	<h1>System tuning 101</h1>
+	<h3><img src="pics/rdtscp_good.png"/></h3>
+</section>
+
+<section>
+	<h1>System tuning 101</h1>
+	<ul>
+      <li>C-States, P-States</li>
+      <li>Dynamic frequency scaling incl TurboBoost</li>
+      <li>HyperThreading</li>
+      <li>Process isolation</li>
+      <li>Low Latency Performance Tuning for Red Hat Enterprise Linux 7</li>
+	</ul>
+</section>
+
 
 <section>
 	<h1>Step 1</h1>
@@ -711,7 +760,6 @@ private:
 
 		<script src="lib/js/head.min.js"></script>
 		<script src="js/reveal.js"></script>
-
 		<script>
 			// More info https://github.com/hakimel/reveal.js#configuration
 			Reveal.initialize({
